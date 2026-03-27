@@ -34,6 +34,14 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+    # Auto-seed if database is empty
+    from database import Player, Match
+    if Player.query.count() == 0:
+        print("🌱 Empty database detected — seeding data...")
+        from seed_players import seed_players, seed_matches
+        seed_players()
+        seed_matches()
+        print("✅ Database seeded!")
 
 # ─── Auth Routes ────────────────────────────────────────────
 
