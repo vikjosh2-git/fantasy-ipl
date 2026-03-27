@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Enter Stats — Fantasy IPL{% endblock %}
+{% block content %}
+<a href="/admin" style="color:#f5a623; text-decoration:none;">← Back to Admin</a>
+<h1 class="page-title" style="margin-top:16px;">
+  ⚙️ Match {{ match.match_number }}: {{ match.team1 }} vs {{ match.team2 }}
+</h1>
+
+<form method="POST">
+    <!-- Floating Save Button -->
+    <div style="position:sticky; top:70px; z-index:999; text-align:center;
+                margin-bottom:24px;">
+        <button type="submit" class="btn btn-primary"
+                style="padding:14px 50px; font-size:16px;
+                    box-shadow:0 4px 15px rgba(245,166,35,0.4);">
+        Save Updates
+        </button>
+    </div>
+
+  <!-- Match Status -->
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="color:#f5a623; margin-bottom:16px;">Match Status</h3>
+    <select name="match_status" style="width:auto; display:inline-block; padding:10px;">
+      <option value="upcoming" {% if match.status == 'upcoming' %}selected{% endif %}>Upcoming</option>
+      <option value="live" {% if match.status == 'live' %}selected{% endif %}>Live</option>
+      <option value="completed" {% if match.status == 'completed' %}selected{% endif %}>Completed</option>
+    </select>
+    <p style="color:#aaa; font-size:13px; margin-top:8px;">
+      ⚠️ Set to <strong>Completed</strong> to trigger points calculation for all users.
+    </p>
+  </div>
+
+  <!-- Team 1 Players -->
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="color:#f5a623; margin-bottom:16px;">🏏 {{ match.team1 }}</h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; min-width:700px;">
+        <thead>
+          <tr style="border-bottom:2px solid #333; color:#aaa; font-size:13px;">
+            <th style="padding:10px; text-align:left;">Played</th>
+            <th style="padding:10px; text-align:left;">Player</th>
+            <th style="padding:10px; text-align:left;">Role</th>
+            <th style="padding:10px;">Runs</th>
+            <th style="padding:10px;">Balls</th>
+            <th style="padding:10px;">4s</th>
+            <th style="padding:10px;">6s</th>
+            <th style="padding:10px;">Wkts</th>
+            <th style="padding:10px;">Overs</th>
+            <th style="padding:10px;">Runs Con.</th>
+            <th style="padding:10px;">Maidens</th>
+            <th style="padding:10px;">Catches</th>
+            <th style="padding:10px;">Stump</th>
+            <th style="padding:10px;">R.Out</th>
+            <th style="padding:10px;">MOTM</th>
+            <th style="padding:10px;">Winner</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for player in players if player.ipl_team == match.team1 %}
+          {% set stat = existing_stats.get(player.id) %}
+          <tr style="border-bottom:1px solid #222;">
+            <td style="padding:10px; text-align:center;">
+              <input type="checkbox" name="did_play_{{ player.id }}"
+                     {% if stat and stat.did_play %}checked{% endif %}>
+            </td>
+            <td style="padding:10px; font-weight:bold; font-size:13px;">{{ player.name }}</td>
+            <td style="padding:10px; color:#aaa; font-size:12px;">{{ player.role }}</td>
+            <td style="padding:10px;">
+              <input type="number" name="runs_{{ player.id }}" min="0"
+                     value="{{ stat.runs if stat else 0 }}"
+                     style="width:60px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="balls_faced_{{ player.id }}" min="0"
+                    value="{{ stat.balls_faced if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="fours_{{ player.id }}" min="0"
+                     value="{{ stat.fours if stat else 0 }}"
+                     style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="sixes_{{ player.id }}" min="0"
+                     value="{{ stat.sixes if stat else 0 }}"
+                     style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="wickets_{{ player.id }}" min="0"
+                     value="{{ stat.wickets if stat else 0 }}"
+                     style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="overs_bowled_{{ player.id }}" min="0" step="0.1"
+                    value="{{ stat.overs_bowled if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="runs_conceded_{{ player.id }}" min="0"
+                    value="{{ stat.runs_conceded if stat else 0 }}"
+                    style="width:60px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="maidens_{{ player.id }}" min="0"
+                     value="{{ stat.maidens if stat else 0 }}"
+                     style="width:60px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="catches_{{ player.id }}" min="0"
+                     value="{{ stat.catches if stat else 0 }}"
+                     style="width:60px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="stumpings_{{ player.id }}" min="0"
+                     value="{{ stat.stumpings if stat else 0 }}"
+                     style="width:60px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="run_outs_{{ player.id }}" min="0"
+                     value="{{ stat.run_outs if stat else 0 }}"
+                     style="width:60px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px; text-align:center;">
+            <input type="checkbox" name="is_motm_{{ player.id }}"
+                    {% if stat and stat.is_motm %}checked{% endif %}>
+            </td>
+            <td style="padding:10px; text-align:center;">
+            <input type="checkbox" name="is_winner_{{ player.id }}"
+                    {% if stat and stat.is_winner %}checked{% endif %}>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Team 2 Players -->
+  <div class="card" style="margin-bottom:24px;">
+    <h3 style="color:#f5a623; margin-bottom:16px;">🏏 {{ match.team2 }}</h3>
+    <div style="overflow-x:auto;">
+      <table style="width:100%; border-collapse:collapse; min-width:700px;">
+        <thead>
+          <tr style="border-bottom:2px solid #333; color:#aaa; font-size:13px;">
+            <th style="padding:10px; text-align:left;">Played</th>
+            <th style="padding:10px; text-align:left;">Player</th>
+            <th style="padding:10px; text-align:left;">Role</th>
+            <th style="padding:10px;">Runs</th>
+            <th style="padding:10px;">Balls</th>
+            <th style="padding:10px;">4s</th>
+            <th style="padding:10px;">6s</th>
+            <th style="padding:10px;">Wkts</th>
+            <th style="padding:10px;">Overs</th>
+            <th style="padding:10px;">Runs Con.</th>
+            <th style="padding:10px;">Maidens</th>
+            <th style="padding:10px;">Catches</th>
+            <th style="padding:10px;">Stump</th>
+            <th style="padding:10px;">R.Out</th>
+            <th style="padding:10px;">MOTM</th>
+            <th style="padding:10px;">Winner</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for player in players if player.ipl_team == match.team2 %}
+          {% set stat = existing_stats.get(player.id) %}
+          <tr style="border-bottom:1px solid #222;">
+            <td style="padding:10px; text-align:center;">
+              <input type="checkbox" name="did_play_{{ player.id }}"
+                     {% if stat and stat.did_play %}checked{% endif %}>
+            </td>
+            <td style="padding:10px; font-weight:bold; font-size:13px;">{{ player.name }}</td>
+            <td style="padding:10px; color:#aaa; font-size:12px;">{{ player.role }}</td>
+            <td style="padding:10px;">
+            <input type="number" name="runs_{{ player.id }}" min="0"
+                    value="{{ stat.runs if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="balls_faced_{{ player.id }}" min="0"
+                    value="{{ stat.balls_faced if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="fours_{{ player.id }}" min="0"
+                    value="{{ stat.fours if stat else 0 }}"
+                    style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="sixes_{{ player.id }}" min="0"
+                    value="{{ stat.sixes if stat else 0 }}"
+                    style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="wickets_{{ player.id }}" min="0"
+                    value="{{ stat.wickets if stat else 0 }}"
+                    style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="overs_bowled_{{ player.id }}" min="0" step="0.1"
+                    value="{{ stat.overs_bowled if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="runs_conceded_{{ player.id }}" min="0"
+                    value="{{ stat.runs_conceded if stat else 0 }}"
+                    style="width:60px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="maidens_{{ player.id }}" min="0"
+                    value="{{ stat.maidens if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="catches_{{ player.id }}" min="0"
+                    value="{{ stat.catches if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="stumpings_{{ player.id }}" min="0"
+                    value="{{ stat.stumpings if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+            <input type="number" name="run_outs_{{ player.id }}" min="0"
+                    value="{{ stat.run_outs if stat else 0 }}"
+                    style="width:55px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px; text-align:center;">
+            <input type="checkbox" name="is_motm_{{ player.id }}"
+                    {% if stat and stat.is_motm %}checked{% endif %}>
+            </td>
+            <td style="padding:10px; text-align:center;">
+            <input type="checkbox" name="is_winner_{{ player.id }}"
+                    {% if stat and stat.is_winner %}checked{% endif %}>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<div style="margin-bottom:40px;"></div>
+</form>
+{% endblock %}

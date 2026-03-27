@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}My Points — Fantasy IPL{% endblock %}
+{% block content %}
+<h1 class="page-title">📊 My Points Breakdown</h1>
+
+<div style="display:flex; gap:16px; margin-bottom:30px;">
+  <div class="card" style="flex:1; text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Total Points</div>
+    <div style="font-size:32px; font-weight:bold; color:#f5a623;">{{ user.total_points }}</div>
+  </div>
+  <div class="card" style="flex:1; text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Matches Played</div>
+    <div style="font-size:32px; font-weight:bold; color:#f5a623;">{{ match_scores|length }}</div>
+  </div>
+  <div class="card" style="flex:1; text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Transfers Remaining</div>
+    <div style="font-size:32px; font-weight:bold; color:#f5a623;">{{ user.transfers_remaining }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <table style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:2px solid #333;">
+        <th style="padding:12px; text-align:left; color:#aaa;">Match</th>
+        <th style="padding:12px; text-align:left; color:#aaa;">Teams</th>
+        <th style="padding:12px; text-align:left; color:#aaa;">Date</th>
+        <th style="padding:12px; text-align:right; color:#aaa;">Points</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user_team, match in match_scores %}
+      <tr style="border-bottom:1px solid #222;">
+        <td style="padding:12px; color:#aaa;">Match {{ match.match_number }}</td>
+        <td style="padding:12px; font-weight:bold;">
+          {{ match.team1 }} vs {{ match.team2 }}
+        </td>
+        <td style="padding:12px; color:#aaa;">
+          {{ match.match_date.strftime('%b %d, %Y') }}
+        </td>
+        <td style="padding:12px; text-align:right; font-weight:bold; color:#f5a623;">
+          {{ user_team.points_scored }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

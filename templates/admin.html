@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Admin — Fantasy IPL{% endblock %}
+{% block content %}
+<h1 class="page-title">⚙️ Admin Panel</h1>
+<div style="display:flex; flex-wrap:wrap; gap:16px;">
+  {% for match in matches %}
+  <div class="card" style="width:300px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <span style="color:#aaa; font-size:13px;">Match {{ match.match_number }}</span>
+      <span class="badge badge-{{ match.status }}">{{ match.status.upper() }}</span>
+    </div>
+    <div style="font-size:16px; font-weight:bold; text-align:center; margin-bottom:10px;">
+      {{ match.team1 }}<br>
+      <span style="color:#aaa; font-size:13px;">vs</span><br>
+      {{ match.team2 }}
+    </div>
+    <div style="color:#aaa; font-size:12px; text-align:center;">
+      📅 {{ match.match_date.strftime('%b %d, %Y') }}
+    </div>
+    <a href="/admin/match/{{ match.id }}"
+       class="btn btn-primary" style="display:block; text-align:center; margin-top:12px;">
+      Enter Stats
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

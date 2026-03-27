@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Leagues — Fantasy IPL{% endblock %}
+{% block content %}
+<h1 class="page-title">🏆 My Leagues</h1>
+<div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:30px;">
+
+  <!-- Create League -->
+  <div class="card" style="flex:1; min-width:280px;">
+    <h3 style="color:#f5a623; margin-bottom:16px;">➕ Create a League</h3>
+    <form method="POST" action="/create-league">
+      <input type="text" name="league_name" placeholder="League Name" required />
+      <button class="btn btn-primary" style="width:100%;">Create League</button>
+    </form>
+  </div>
+
+  <!-- Join League -->
+  <div class="card" style="flex:1; min-width:280px;">
+    <h3 style="color:#f5a623; margin-bottom:16px;">🔗 Join a League</h3>
+    <form method="POST" action="/join-league">
+      <input type="text" name="league_code" placeholder="Enter League Code" required />
+      <button class="btn btn-success" style="width:100%;">Join League</button>
+    </form>
+  </div>
+</div>
+
+<!-- My Leagues List -->
+<h2 style="color:#f5a623; margin-bottom:16px;">My Leagues</h2>
+{% if leagues %}
+<div style="display:flex; flex-wrap:wrap; gap:16px;">
+  {% for league in leagues %}
+  <div class="card" style="width:280px;">
+    <h3 style="color:#f5a623;">{{ league.name }}</h3>
+    <div style="color:#aaa; font-size:13px; margin-top:8px;">
+      League Code: <span style="color:white; font-weight:bold; letter-spacing:2px;">{{ league.league_code }}</span>
+    </div>
+    <div style="margin-top:16px;">
+      <a href="/league/{{ league.id }}" class="btn btn-info" style="width:100%; text-align:center;">View Leaderboard</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center; padding:40px;">
+  <p style="color:#aaa;">You haven't joined any leagues yet. Create one or join with a code!</p>
+</div>
+{% endif %}
+{% endblock %}

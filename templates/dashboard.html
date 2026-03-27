@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — F&F CricFans League{% endblock %}
+{% block content %}
+<h1 class="page-title">Welcome, {{ user.username }}! 🏏</h1>
+
+ <!-- Countdown Banner -->
+{% if next_match %}
+<div class="card" style="margin-bottom:24px; background: linear-gradient(135deg, #0f3460, #16213e);
+     border:1px solid #f5a623; text-align:center; padding:24px;">
+  <div style="color:#aaa; font-size:13px; margin-bottom:8px;">
+    ⏰ Next Transfer Deadline
+  </div>
+  <div style="font-size:18px; font-weight:bold; margin-bottom:12px;">
+    Match {{ next_match.match_number }}: 
+    {{ next_match.team1 }} vs {{ next_match.team2 }}
+  </div>
+  <div style="display:flex; justify-content:center; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+  <div class="countdown-box">
+    <div class="countdown-num" id="days">00</div>
+    <div class="countdown-label">Days</div>
+  </div>
+  <div class="countdown-box">
+    <div class="countdown-num" id="hours">00</div>
+    <div class="countdown-label">Hours</div>
+  </div>
+  <div class="countdown-box">
+    <div class="countdown-num" id="minutes">00</div>
+    <div class="countdown-label">Minutes</div>
+  </div>
+  <div class="countdown-box">
+    <div class="countdown-num" id="seconds">00</div>
+    <div class="countdown-label">Seconds</div>
+  </div>
+</div>
+  <div style="color:#aaa; font-size:13px;">
+    📍 {{ next_match.venue }} &nbsp;|&nbsp;
+    📅 {{ next_match.match_date.strftime('%b %d, %Y %I:%M %p') }} IST
+  </div>
+  <a href="/select-team" class="btn btn-primary" style="margin-top:16px; display:inline-block;">
+    ✏️ Edit Team Before Deadline
+  </a>
+</div>
+{% elif not next_match and not live_matches %}
+<div class="card" style="margin-bottom:24px; text-align:center; padding:20px;">
+  <div style="color:#aaa;">🏆 All matches completed for the season!</div>
+</div>
+{% endif %}
+
+<!-- Stats Bar -->
+<div class="flex-grid" style="margin-bottom:24px;">
+  <div class="card" style="text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Team Name</div>
+    <div style="font-size:20px; font-weight:bold; color:#f5a623; margin-top:6px;">
+      {{ user.team_name }}
+    </div>
+  </div>
+  <div class="card" style="text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Total Points</div>
+    <div style="font-size:20px; font-weight:bold; color:#f5a623; margin-top:6px;">
+      {{ user.total_points }}
+    </div>
+  </div>
+  <div class="card" style="text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Transfers Remaining</div>
+    <div style="font-size:20px; font-weight:bold; color:#f5a623; margin-top:6px;">
+      {{ user.transfers_remaining }}
+    </div>
+  </div>
+</div>
+
+<!-- Live Matches -->
+{% if live_matches %}
+<div style="margin-bottom:30px;">
+  <h2 style="color:#f5a623; margin-bottom:16px;">🔴 Live Matches</h2>
+  <div style="display:flex; gap:16px; flex-wrap:wrap;">
+    {% for match in live_matches %}
+    <div class="card" style="flex:1; min-width:280px;">
+      <div style="font-size:18px; font-weight:bold; text-align:center;">
+        {{ match.team1 }} <span style="color:#aaa;">vs</span> {{ match.team2 }}
+      </div>
+      <div style="color:#aaa; font-size:13px; text-align:center; margin-top:8px;">📍 {{ match.venue }}</div>
+      <div style="text-align:center; margin-top:10px;">
+        <span class="badge badge-live">🔴 LIVE</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Upcoming Matches -->
+<div style="margin-bottom:30px;">
+  <h2 style="color:#f5a623; margin-bottom:16px;">📅 Upcoming Matches</h2>
+  <div style="display:flex; gap:16px; flex-wrap:wrap;">
+    {% for match in upcoming_matches %}
+    <div class="card" style="flex:1; min-width:280px;">
+      <div style="font-size:18px; font-weight:bold; text-align:center;">
+        {{ match.team1 }} <span style="color:#aaa;">vs</span> {{ match.team2 }}
+      </div>
+      <div style="color:#aaa; font-size:13px; text-align:center; margin-top:8px;">📍 {{ match.venue }}</div>
+      <div style="color:#aaa; font-size:13px; text-align:center;">📅 {{ match.match_date.strftime('%b %d, %Y %I:%M %p') }}</div>
+      <div style="text-align:center; margin-top:10px;">
+        <span class="badge badge-upcoming">UPCOMING</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Current Team -->
+<div>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h2 style="color:#f5a623;">👥 My Current Team</h2>
+    <a href="/select-team" class="btn btn-primary">Edit Team</a>
+  </div>
+  {% if players %}
+  <div style="display:flex; flex-wrap:wrap; gap:12px;">
+    {% for player in players %}
+    <div class="card" style="width:170px; text-align:center; padding:16px;">
+      <div style="font-size:13px; font-weight:bold;">{{ player.name }}</div>
+      <div style="color:#aaa; font-size:11px; margin-top:4px;">{{ player.ipl_team }}</div>
+      <div style="color:#f5a623; font-size:11px; margin-top:4px;">{{ player.role.upper() }}</div>
+      {% if user_team and player.id == user_team.captain_id %}
+        <span style="background:#f5a623; color:#1a1a2e; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">C</span>
+      {% elif user_team and player.id == user_team.vice_captain_id %}
+        <span style="background:#81c784; color:#1a1a2e; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">VC</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center; padding:40px;">
+    <p style="color:#aaa; margin-bottom:20px;">You haven't selected your team yet!</p>
+    <a href="/select-team" class="btn btn-primary">Select Your Team</a>
+  </div>
+  {% endif %}
+</div>
+<!-- Countdown Script -->
+{% if next_match %}
+<script>
+  const matchTime = new Date("{{ next_match.match_date.strftime('%Y-%m-%dT%H:%M:%S') }}");
+  // Convert IST to UTC (IST is UTC+5:30)
+  const matchTimeUTC = new Date(matchTime.getTime() - (5.5 * 60 * 60 * 1000));
+
+  function updateCountdown() {
+    const now = new Date();
+    const diff = matchTimeUTC - now;
+
+    if (diff <= 0) {
+      document.getElementById("days").textContent = "00";
+      document.getElementById("hours").textContent = "00";
+      document.getElementById("minutes").textContent = "00";
+      document.getElementById("seconds").textContent = "00";
+      // Reload page to show live match banner
+      setTimeout(() => location.reload(), 3000);
+      return;
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    document.getElementById("days").textContent = String(days).padStart(2, "0");
+    document.getElementById("hours").textContent = String(hours).padStart(2, "0");
+    document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
+    document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+</script>
+{% endif %}
+
+{% endblock %}

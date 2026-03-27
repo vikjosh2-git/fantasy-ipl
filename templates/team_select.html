@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Select Team — F&F CricFans League{% endblock %}
+{% block content %}
+<h1 class="page-title">👥 Select Your Team</h1>
+
+{% if live_match %}
+<div style="background:#c62828; border-radius:10px; padding:16px 24px;
+            margin-bottom:24px; display:flex; align-items:center; gap:12px;">
+  <span style="font-size:24px;">🔒</span>
+  <div>
+    <div style="font-weight:bold; font-size:16px;">Transfers Locked!</div>
+    <div style="color:#ffcdd2; font-size:13px; margin-top:4px;">
+      {{ live_match.team1 }} vs {{ live_match.team2 }} is currently live.
+      Transfers will reopen once the match is completed.
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Info Bar -->
+<div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;
+            position:sticky; top:70px; z-index:999;
+            background:#1a1a2e; padding:12px 0;
+            box-shadow:0 4px 10px rgba(0,0,0,0.4);">
+  <div class="card" style="flex:1; min-width:150px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">Selected</div>
+    <div style="font-size:22px; font-weight:bold; color:#f5a623;">
+      <span id="selectedCount">0</span>/11
+    </div>
+  </div>
+  <div class="card" style="flex:1; min-width:150px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">Budget Left</div>
+    <div style="font-size:22px; font-weight:bold; color:#f5a623;">
+      <span id="budgetLeft">100</span> cr
+    </div>
+  </div>
+  <div class="card" style="flex:1; min-width:150px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">Captain</div>
+    <div style="font-size:15px; font-weight:bold; color:#f5a623;" id="captainName">None</div>
+  </div>
+  <div class="card" style="flex:1; min-width:150px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">Vice Captain</div>
+    <div style="font-size:15px; font-weight:bold; color:#81c784;" id="vcName">None</div>
+  </div>
+  <div class="card" style="flex:1; min-width:150px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">Season Transfers Left</div>
+    <div style="font-size:22px; font-weight:bold; color:#f5a623;">
+      {{ user.transfers_remaining }}
+    </div>
+  </div>
+  <div class="card" style="flex:1; min-width:150px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">This Window</div>
+    <div style="font-size:22px; font-weight:bold; color:#81c784;">
+      <span id="windowTransfers">0</span> net
+    </div>
+  </div>
+</div>
+
+<!-- Filter by Team -->
+<div style="margin-bottom:20px;">
+  <label style="color:#aaa; font-size:13px; margin-right:10px;">Filter by Team:</label>
+  <select id="teamFilter" onchange="filterPlayers()" style="width:auto; display:inline-block; padding:8px;">
+    <option value="all">All Teams</option>
+    {% set teams = players | map(attribute='ipl_team') | unique | list %}
+    {% for team in teams %}
+    <option value="{{ team }}">{{ team }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- Players by Role -->
+{% for role, label, emoji in [('keeper','Wicket Keepers','🧤'), ('batsman','Batsmen','🏏'), ('allrounder','All Rounders','⚡'), ('bowler','Bowlers','🎯')] %}
+<div style="margin-bottom:28px;">
+  <h3 style="color:#f5a623; margin-bottom:14px; border-bottom:1px solid #333; padding-bottom:8px;">
+    {{ emoji }} {{ label }}
+  </h3>
+  <div style="display:flex; flex-wrap:wrap; gap:12px;" id="section-{{ role }}">
+    {% for p in players if p.role == role %}
+    <div class="player-card card" id="card-{{ p.id }}"
+         data-team="{{ p.ipl_team }}" data-role="{{ p.role }}"
+         style="width:170px; cursor:pointer; border:2px solid transparent; padding:14px; text-align:center;"
+         onclick="togglePlayer({{ p.id }}, {{ p.credits }}, '{{ p.name }}')">
+      <div style="font-size:13px; font-weight:bold;">{{ p.name }}</div>
+      <div style="color:#aaa; font-size:11px; margin-top:4px;">{{ p.ipl_team }}</div>
+      <div style="color:#f5a623; font-size:13px; margin-top:6px;">💰 {{ p.credits }} cr</div>
+      <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
+        <span onclick="event.stopPropagation(); setCaptain({{ p.id }}, '{{ p.name }}')"
+              style="background:#f5a623; color:#1a1a2e; padding:2px 8px; border-radius:10px;
+                     font-size:11px; font-weight:bold; cursor:pointer;">C</span>
+        <span onclick="event.stopPropagation(); setVC({{ p.id }}, '{{ p.name }}')"
+              style="background:#81c784; color:#1a1a2e; padding:2px 8px; border-radius:10px;
+                     font-size:11px; font-weight:bold; cursor:pointer;">VC</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+<!-- Submit Bar -->
+<div style="position:fixed; bottom:0; left:0; right:0; background:#16213e;
+            padding:16px; text-align:center; border-top:2px solid #333; z-index:100;">
+  <div id="errorMsg" style="color:#ef5350; margin-bottom:8px; font-size:14px;"></div>
+  
+  {% if live_match %}
+<button class="btn" onclick="return false;"
+        style="padding:12px 40px; font-size:16px; background:#555; color:#aaa; cursor:not-allowed;">
+  🔒 Transfers Locked
+</button>
+{% else %}
+<button class="btn btn-primary" onclick="submitTeam()" style="padding:12px 40px; font-size:16px;">
+  Save Team 🏏
+</button>
+{% endif %}
+
+</div>
+
+<div style="height:80px;"></div>
+
+<script>
+  let selected = {{ selected_ids | tojson }};
+  let budget = 100;
+  let captainId = {{ captain_id or 'null' }};
+  let vcId = {{ vc_id or 'null' }};
+  let captainName = "None", vcName = "None";
+
+  // Calculate initial budget
+  selected.forEach(id => {
+    const card = document.getElementById("card-" + id);
+    if (card) {
+      const credits = parseFloat(card.querySelector("[data-credits]")?.dataset.credits ||
+        card.innerText.match(/💰 ([\d.]+)/)?.[1] || 0);
+      budget -= credits;
+    }
+  });
+
+  // Init UI
+  window.onload = function() {
+    selected.forEach(id => {
+      const card = document.getElementById("card-" + id);
+      if (card) card.style.borderColor = "#4fc3f7";
+    });
+    if (captainId) {
+      const card = document.getElementById("card-" + captainId);
+      if (card) {
+        card.style.borderColor = "#f5a623";
+        captainName = card.querySelector("div").innerText;
+      }
+    }
+    if (vcId) {
+      const card = document.getElementById("card-" + vcId);
+      if (card) {
+        card.style.borderColor = "#81c784";
+        vcName = card.querySelector("div").innerText;
+      }
+    }
+    updateBar();
+  };
+
+  function getCredits(id) {
+    const card = document.getElementById("card-" + id);
+    const match = card.innerText.match(/💰 ([\d.]+)/);
+    return match ? parseFloat(match[1]) : 0;
+  }
+
+  function togglePlayer(id, credits, name) {
+    if (selected.includes(id)) {
+      selected = selected.filter(x => x !== id);
+      budget += credits;
+      document.getElementById("card-" + id).style.borderColor = "transparent";
+      if (captainId === id) { captainId = null; captainName = "None"; }
+      if (vcId === id) { vcId = null; vcName = "None"; }
+    } else {
+      if (selected.length >= 11) { showError("You can only select 11 players!"); return; }
+      if (budget < credits) { showError("Not enough budget!"); return; }
+      selected.push(id);
+      budget -= credits;
+      document.getElementById("card-" + id).style.borderColor = "#4fc3f7";
+    }
+    updateBar();
+  }
+
+  function setCaptain(id, name) {
+    if (!selected.includes(id)) { showError("Select the player first!"); return; }
+    if (vcId === id) { showError("Already set as Vice Captain!"); return; }
+    if (captainId) document.getElementById("card-" + captainId).style.borderColor = "#4fc3f7";
+    captainId = id; captainName = name;
+    document.getElementById("card-" + id).style.borderColor = "#f5a623";
+    updateBar();
+  }
+
+  function setVC(id, name) {
+    if (!selected.includes(id)) { showError("Select the player first!"); return; }
+    if (captainId === id) { showError("Already set as Captain!"); return; }
+    if (vcId) document.getElementById("card-" + vcId).style.borderColor = "#4fc3f7";
+    vcId = id; vcName = name;
+    document.getElementById("card-" + id).style.borderColor = "#81c784";
+    updateBar();
+  }
+
+  function updateBar() {
+    document.getElementById("selectedCount").textContent = selected.length;
+    document.getElementById("budgetLeft").textContent = budget.toFixed(1);
+    document.getElementById("captainName").textContent = captainName;
+    document.getElementById("vcName").textContent = vcName;
+    document.getElementById("errorMsg").textContent = "";
+  }
+
+  function showError(msg) {
+    document.getElementById("errorMsg").textContent = msg;
+  }
+
+  function filterPlayers() {
+    const team = document.getElementById("teamFilter").value;
+    document.querySelectorAll(".player-card").forEach(card => {
+      card.style.display = (team === "all" || card.dataset.team === team) ? "block" : "none";
+    });
+  }
+
+  function submitTeam() {
+  if (selected.length !== 11) { showError("Please select exactly 11 players!"); return; }
+  if (!captainId) { showError("Please select a Captain!"); return; }
+  if (!vcId) { showError("Please select a Vice Captain!"); return; }
+
+  fetch("/save-team", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ player_ids: selected, captain_id: captainId, vice_captain_id: vcId })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      alert(`Team saved! Transfers used this window: ${data.window_transfers_used}. Season transfers remaining: ${data.transfers_remaining}`);
+      window.location.href = "/dashboard";
+    } else {
+      showError(data.message);
+    }
+  });
+}
+
+</script>
+{% endblock %}

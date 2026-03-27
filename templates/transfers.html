@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Transfer History — F&F CricFans League{% endblock %}
+{% block content %}
+<h1 class="page-title">🔄 Transfer History</h1>
+
+<!-- Summary -->
+<div style="display:flex; gap:16px; margin-bottom:30px; flex-wrap:wrap;">
+  <div class="card" style="flex:1; min-width:180px; text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Season Transfers Left</div>
+    <div style="font-size:28px; font-weight:bold; color:#f5a623;">
+      {{ user.transfers_remaining }}
+    </div>
+  </div>
+  <div class="card" style="flex:1; min-width:180px; text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Transfers Used</div>
+    <div style="font-size:28px; font-weight:bold; color:#ef5350;">
+      {{ 150 - user.transfers_remaining }}
+    </div>
+  </div>
+</div>
+
+{% if windows %}
+  {% for window in windows %}
+  <div class="card" style="margin-bottom:24px;">
+
+    <!-- Window Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #333;">
+      <div>
+        <div style="color:#f5a623; font-weight:bold; font-size:16px;">
+          Window after Match {{ window.match.match_number }}
+        </div>
+        <div style="color:#aaa; font-size:13px; margin-top:4px;">
+          {{ window.match.team1 }} vs {{ window.match.team2 }}
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="color:#aaa; font-size:13px;">Transfers in window</div>
+        <div style="font-size:22px; font-weight:bold; color:#f5a623;">
+          {{ window.transfers | length }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Transfer List -->
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr style="color:#aaa; font-size:13px; border-bottom:1px solid #333;">
+          <th style="padding:10px; text-align:left;">Player In</th>
+          <th style="padding:10px; text-align:center;">→</th>
+          <th style="padding:10px; text-align:left;">Player Out</th>
+          <th style="padding:10px; text-align:left;">Team</th>
+          <th style="padding:10px; text-align:right;">Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in window.transfers %}
+        <tr style="border-bottom:1px solid #222;">
+          <td style="padding:10px;">
+            <span style="color:#43a047; font-weight:bold;">
+              ✅ {{ t.player_in.name }}
+            </span>
+            <div style="color:#aaa; font-size:11px;">{{ t.player_in.ipl_team }}</div>
+          </td>
+          <td style="padding:10px; text-align:center; color:#aaa;">⇄</td>
+          <td style="padding:10px;">
+            <span style="color:#ef5350; font-weight:bold;">
+              ❌ {{ t.player_out.name }}
+            </span>
+            <div style="color:#aaa; font-size:11px;">{{ t.player_out.ipl_team }}</div>
+          </td>
+          <td style="padding:10px; color:#aaa; font-size:13px;">
+            {{ t.player_in.role.upper() }}
+          </td>
+          <td style="padding:10px; text-align:right; color:#aaa; font-size:12px;">
+            {{ t.transferred_at.strftime('%b %d, %H:%M') }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card" style="text-align:center; padding:40px;">
+    <p style="color:#aaa; font-size:16px;">No transfers made yet!</p>
+    <a href="/select-team" class="btn btn-primary" style="margin-top:16px;">
+      Make Your First Transfer
+    </a>
+  </div>
+{% endif %}
+{% endblock %}

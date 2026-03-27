@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}League — Fantasy IPL{% endblock %}
+{% block content %}
+<a href="/leagues" style="color:#f5a623; text-decoration:none;">← Back to Leagues</a>
+<h1 class="page-title" style="margin-top:16px;">🏆 {{ league.name }}</h1>
+<div style="color:#aaa; margin-bottom:24px;">
+  League Code: <span style="color:#f5a623; font-weight:bold; letter-spacing:2px;">{{ league.league_code }}</span>
+  — Share this code with friends to invite them!
+</div>
+<div class="card">
+  <table style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:2px solid #333;">
+        <th style="padding:12px; text-align:left; color:#aaa;">Rank</th>
+        <th style="padding:12px; text-align:left; color:#aaa;">Team</th>
+        <th style="padding:12px; text-align:left; color:#aaa;">Manager</th>
+        <th style="padding:12px; text-align:right; color:#aaa;">Points</th>
+        <th style="padding:12px; text-align:right; color:#aaa;">Compare</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for member in members %}
+      <tr style="border-bottom:1px solid #222;
+                 {% if member.id == current_user_id %}background:#0f3460;{% endif %}">
+        <td style="padding:12px;">
+          {% if loop.index == 1 %} 🥇
+          {% elif loop.index == 2 %} 🥈
+          {% elif loop.index == 3 %} 🥉
+          {% else %} {{ loop.index }}
+          {% endif %}
+        </td>
+        <td style="padding:12px; font-weight:bold; color:#f5a623;">{{ member.team_name }}</td>
+        <td style="padding:12px; color:#ccc;">{{ member.username }}</td>
+        <td style="padding:12px; text-align:right; font-weight:bold;">{{ member.total_points }}</td>
+        <td style="padding:12px; text-align:right;">
+          {% if member.id != current_user_id %}
+          <a href="/league/{{ league.id }}/compare/{{ member.id }}"
+            class="btn btn-info" style="padding:6px 14px; font-size:12px;">
+            ⚔️ Compare
+          </a>
+          {% else %}
+          <span style="color:#aaa; font-size:12px;">You</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

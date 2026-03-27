@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Leaderboard — Fantasy IPL{% endblock %}
+{% block content %}
+<h1 class="page-title">🏆 Global Leaderboard</h1>
+<div class="card">
+  <table style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:2px solid #333;">
+        <th style="padding:12px; text-align:left; color:#aaa;">Rank</th>
+        <th style="padding:12px; text-align:left; color:#aaa;">Team</th>
+        <th style="padding:12px; text-align:left; color:#aaa;">Manager</th>
+        <th style="padding:12px; text-align:right; color:#aaa;">Points</th>
+        <th style="padding:12px; text-align:right; color:#aaa;">Transfers Left</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr style="border-bottom:1px solid #222;
+                 {% if user.id == current_user_id %}background:#0f3460;{% endif %}">
+        <td style="padding:12px;">
+          {% if loop.index == 1 %} 🥇
+          {% elif loop.index == 2 %} 🥈
+          {% elif loop.index == 3 %} 🥉
+          {% else %} {{ loop.index }}
+          {% endif %}
+        </td>
+        <td style="padding:12px; font-weight:bold; color:#f5a623;">{{ user.team_name }}</td>
+        <td style="padding:12px; color:#ccc;">{{ user.username }}</td>
+        <td style="padding:12px; text-align:right; font-weight:bold;">{{ user.total_points }}</td>
+        <td style="padding:12px; text-align:right; color:#aaa;">{{ user.transfers_remaining }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
