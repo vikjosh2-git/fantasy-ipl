@@ -4,7 +4,6 @@ from datetime import datetime
 
 def seed_players():
     if True:  # context already active when called from app.py
-#    with app.app_context():
         Player.query.delete()
         db.session.commit()
 
@@ -103,7 +102,6 @@ def seed_players():
         print(f"✅ {len(players)} players seeded successfully!")
 
 def seed_matches():
-#    with app.app_context():
     if True:  # context already active when called from app.py
         Match.query.delete()
         db.session.commit()
@@ -175,5 +173,5 @@ def seed_matches():
 if __name__ == "__main__":
     from app import app
     with app.app_context():
-            seed_players()
-            seed_matches()
+      seed_players()
+      seed_matches()
