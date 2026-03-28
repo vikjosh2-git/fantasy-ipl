@@ -7,6 +7,7 @@ from flask import request
 from flask import session
 from flask import flash
 from flask import jsonify
+from scoring_config import SCORING_CONFIG
 
 from werkzeug.security import generate_password_hash, check_password_hash
 from points import calculate_points
@@ -83,7 +84,9 @@ def register():
             return redirect(url_for("register"))
         hashed_pw = generate_password_hash(password)
         new_user = User(username=username, email=email,
-                       password=hashed_pw, team_name=team_name)
+               password=hashed_pw, team_name=team_name,
+               transfers_remaining=SCORING_CONFIG["season_transfers"])
+        
         db.session.add(new_user)
         db.session.commit()
         flash("Account created! Please log in.", "success")
@@ -176,18 +179,46 @@ def save_team():
     user = User.query.get(session["user_id"])
     new_ids = set(data["player_ids"])
 
-    # Get current active window
-    current_window = get_or_create_transfer_window(user.id)
-    baseline_ids = set(int(x) for x in current_window.baseline_player_ids.split(",") if x.strip())
-
     # Get current team
     old_team = UserTeam.query.filter_by(user_id=user.id).first()
     old_ids = set(int(x) for x in old_team.player_ids.split(",") if x.strip()) if old_team else set()
-    
+
+    # First time selection — no transfers deducted
+    is_first_selection = old_team is None
+
+    # Check if any match has started yet
+    any_match_started = Match.query.filter(
+        Match.status.in_(["live", "completed"])
+    ).first()
+
+    # Pre-season or first selection — save freely, no transfers deducted
+    if is_first_selection or not any_match_started:
+        if old_team:
+            old_team.player_ids = ",".join(str(x) for x in data["player_ids"])
+            old_team.captain_id = data["captain_id"]
+            old_team.vice_captain_id = data["vice_captain_id"]
+            old_team.last_updated = utcnow()
+        else:
+            new_team = UserTeam(
+                user_id=user.id,
+                player_ids=",".join(str(x) for x in data["player_ids"]),
+                captain_id=data["captain_id"],
+                vice_captain_id=data["vice_captain_id"]
+            )
+            db.session.add(new_team)
+        db.session.commit()
+        return jsonify({
+            "success": True,
+            "transfers_remaining": user.transfers_remaining,
+            "window_transfers_used": 0
+        })
+
+    # Season has started — enforce transfer limits
+    current_window = get_or_create_transfer_window(user.id)
+    baseline_ids = set(int(x) for x in current_window.baseline_player_ids.split(",") if x.strip())
+
     # Calculate NET transfers in this window
     net_transfers = len(new_ids - baseline_ids)
-
-    # Additional transfers needed beyond what's already used
     previous_net = len(old_ids - baseline_ids)
     additional_transfers = max(0, net_transfers - previous_net)
 
@@ -197,11 +228,9 @@ def save_team():
             "message": f"Not enough transfers! You need {additional_transfers} more but only have {user.transfers_remaining} remaining."
         })
 
-    # Log individual transfers (players in and out vs previous team)
+    # Log individual transfers
     players_in = new_ids - old_ids
     players_out = old_ids - new_ids
-
-    # Pair them up and log
     for player_in_id, player_out_id in zip(sorted(players_in), sorted(players_out)):
         history = TransferHistory(
             user_id=user.id,
@@ -212,24 +241,15 @@ def save_team():
         )
         db.session.add(history)
 
-    # Update transfer count
+    # Deduct transfers
     user.transfers_remaining -= additional_transfers
     current_window.transfers_used = net_transfers
 
     # Save team
-    if old_team:
-        old_team.player_ids = ",".join(str(x) for x in data["player_ids"])
-        old_team.captain_id = data["captain_id"]
-        old_team.vice_captain_id = data["vice_captain_id"]
-        old_team.last_updated = utcnow()
-    else:
-        new_team = UserTeam(
-            user_id=user.id,
-            player_ids=",".join(str(x) for x in data["player_ids"]),
-            captain_id=data["captain_id"],
-            vice_captain_id=data["vice_captain_id"]
-        )
-        db.session.add(new_team)
+    old_team.player_ids = ",".join(str(x) for x in data["player_ids"])
+    old_team.captain_id = data["captain_id"]
+    old_team.vice_captain_id = data["vice_captain_id"]
+    old_team.last_updated = utcnow()
 
     db.session.commit()
     return jsonify({
