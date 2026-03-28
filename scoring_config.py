@@ -3,11 +3,11 @@
 # Edit values here to adjust points system
 # ─────────────────────────────────────────────
 
-# ── Season Settings ────────────────────────
-    "season_transfers": 150,        # Total transfers allowed per season
-    "preseason_transfers": True,    # Allow unlimited transfers before first match
 
 SCORING_CONFIG = {
+    # ── Season Settings ────────────────────────
+    "season_transfers": 150,        # Total transfers allowed per season
+    "preseason_transfers": True,    # Allow unlimited transfers before first match
 
     # ── Basic Batting ──────────────────────────
     "run": 1,                # per run scored

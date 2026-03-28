@@ -12,7 +12,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     team_name = db.Column(db.String(80), nullable=True)
-    transfers_remaining = db.Column(db.Integer, default=none)
+    transfers_remaining = db.Column(db.Integer, default=None)
     total_points = db.Column(db.Float, default=0)
     is_admin = db.Column(db.Boolean, default=False)
     joined_at = db.Column(db.DateTime, default=utcnow)

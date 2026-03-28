@@ -56,16 +56,70 @@
   </div>
 </div>
 
-<!-- Filter by Team -->
-<div style="margin-bottom:20px;">
-  <label style="color:#aaa; font-size:13px; margin-right:10px;">Filter by Team:</label>
-  <select id="teamFilter" onchange="filterPlayers()" style="width:auto; display:inline-block; padding:8px;">
-    <option value="all">All Teams</option>
-    {% set teams = players | map(attribute='ipl_team') | unique | list %}
-    {% for team in teams %}
-    <option value="{{ team }}">{{ team }}</option>
-    {% endfor %}
-  </select>
+<!-- Filters -->
+<div class="card" style="margin-bottom:20px; padding:16px;">
+  <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
+
+    <!-- Team Filter -->
+    <div>
+      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">IPL Team</div>
+      <select id="teamFilter" onchange="filterPlayers()"
+              style="width:auto; padding:8px; min-width:160px;">
+        <option value="all">All Teams</option>
+        {% set teams = players | map(attribute='ipl_team') | unique | list %}
+        {% for team in teams | sort %}
+        <option value="{{ team }}">{{ team }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Role Filter -->
+    <div>
+      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">Role</div>
+      <select id="roleFilter" onchange="filterPlayers()"
+              style="width:auto; padding:8px; min-width:140px;">
+        <option value="all">All Roles</option>
+        <option value="keeper">🧤 Keeper</option>
+        <option value="batsman">🏏 Batsman</option>
+        <option value="allrounder">⚡ All Rounder</option>
+        <option value="bowler">🎯 Bowler</option>
+      </select>
+    </div>
+
+<!-- Credits Range Filter -->
+    <div>
+      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">
+        Max Credits: <span id="creditsVal">11</span>
+      </div>
+      <input type="range" id="creditsFilter" min="7" max="11" value="11" step="0.5"
+             oninput="document.getElementById('creditsVal').textContent=this.value; filterPlayers()"
+             style="width:160px; padding:0; margin:0; background:transparent;
+                    accent-color:#f5a623;">
+    </div>
+
+    <!-- Next Match Filter -->
+    {% if next_match %}
+    <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+      <input type="checkbox" id="nextMatchFilter" onchange="filterPlayers()"
+             style="width:auto; margin:0; padding:0; accent-color:#f5a623;">
+      <label for="nextMatchFilter" style="color:#aaa; font-size:13px; cursor:pointer;">
+        Next match only
+        <span style="color:#f5a623; font-size:12px;">
+          ({{ next_match.team1 }} vs {{ next_match.team2 }})
+        </span>
+      </label>
+    </div>
+    {% endif %}
+
+    <!-- Reset Button -->
+    <div>
+      <button onclick="resetFilters()" class="btn"
+              style="background:#333; color:#aaa; padding:8px 16px; font-size:13px;">
+        Reset Filters
+      </button>
+    </div>
+
+  </div>
 </div>
 
 <!-- Players by Role -->
@@ -76,14 +130,21 @@
   </h3>
   <div style="display:flex; flex-wrap:wrap; gap:12px;" id="section-{{ role }}">
     {% for p in players if p.role == role %}
-    <div class="player-card card" id="card-{{ p.id }}"
-         data-team="{{ p.ipl_team }}" data-role="{{ p.role }}"
+<div class="player-card card" id="card-{{ p.id }}"
+         data-team="{{ p.ipl_team }}"
+         data-role="{{ p.role }}"
+         data-points="{{ player_points.get(p.id, 0) }}"
+         data-next-match="{{ 'yes' if p.ipl_team in next_match_teams else 'no' }}"
          style="width:170px; cursor:pointer; border:2px solid transparent; padding:14px; text-align:center;"
          onclick="togglePlayer({{ p.id }}, {{ p.credits }}, '{{ p.name }}')">
       <div style="font-size:13px; font-weight:bold;">{{ p.name }}</div>
       <div style="color:#aaa; font-size:11px; margin-top:4px;">{{ p.ipl_team }}</div>
       <div style="color:#f5a623; font-size:13px; margin-top:6px;">💰 {{ p.credits }} cr</div>
-      <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
+      <div style="color:#81c784; font-size:12px; margin-top:2px;">
+        📊 {{ player_points.get(p.id, 0) }} pts
+</div>
+
+    <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
         <span onclick="event.stopPropagation(); setCaptain({{ p.id }}, '{{ p.name }}')"
               style="background:#f5a623; color:#1a1a2e; padding:2px 8px; border-radius:10px;
                      font-size:11px; font-weight:bold; cursor:pointer;">C</span>
@@ -210,11 +271,31 @@
     document.getElementById("errorMsg").textContent = msg;
   }
 
-  function filterPlayers() {
+function filterPlayers() {
     const team = document.getElementById("teamFilter").value;
+    const role = document.getElementById("roleFilter").value;
+    const minPoints = parseFloat(document.getElementById("pointsFilter").value);
+    const nextMatchOnly = document.getElementById("nextMatchFilter")?.checked || false;
+
     document.querySelectorAll(".player-card").forEach(card => {
-      card.style.display = (team === "all" || card.dataset.team === team) ? "block" : "none";
+      const matchTeam = team === "all" || card.dataset.team === team;
+      const matchRole = role === "all" || card.dataset.role === role;
+      const matchPoints = parseFloat(card.dataset.points || 0) >= minPoints;
+      const matchNext = !nextMatchOnly || card.dataset.nextMatch === "yes";
+
+      card.style.display = (matchTeam && matchRole && matchPoints && matchNext)
+        ? "block" : "none";
     });
+  }
+
+  function resetFilters() {
+    document.getElementById("teamFilter").value = "all";
+    document.getElementById("roleFilter").value = "all";
+    document.getElementById("pointsFilter").value = 0;
+    document.getElementById("pointsVal").textContent = "0";
+    const nextFilter = document.getElementById("nextMatchFilter");
+    if (nextFilter) nextFilter.checked = false;
+    filterPlayers();
   }
 
   function submitTeam() {

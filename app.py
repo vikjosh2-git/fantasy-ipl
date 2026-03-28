@@ -138,12 +138,31 @@ def select_team():
         selected_ids = [int(x) for x in existing_team.player_ids.split(",")]
         captain_id = existing_team.captain_id
         vc_id = existing_team.vice_captain_id
+
     live_match = Match.query.filter_by(status="live").first()
+    any_match_started = Match.query.filter(
+        Match.status.in_(["live", "completed"])
+    ).first()
+    next_match = Match.query.filter_by(status="upcoming").order_by(Match.match_date).first()
+    next_match_teams = []
+    if next_match:
+        next_match_teams = [next_match.team1, next_match.team2]
+
+    # Get season points per player for points range filter
+    from database import PlayerMatchStats
+    player_points = {}
+    for player in players:
+        stats = PlayerMatchStats.query.filter_by(player_id=player.id).all()
+        player_points[player.id] = round(sum(s.points_earned for s in stats), 1)
+
     return render_template("team_select.html", players=players,
                            user=user, selected_ids=selected_ids,
                            captain_id=captain_id, vc_id=vc_id,
-                           live_match=live_match)
-
+                           live_match=live_match,
+                           any_match_started=any_match_started,
+                           next_match=next_match,
+                           next_match_teams=next_match_teams,
+                           player_points=player_points)
 
 def get_or_create_transfer_window(user_id):
     from database import TransferWindow
