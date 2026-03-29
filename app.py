@@ -139,7 +139,7 @@ def select_team():
         captain_id = existing_team.captain_id
         vc_id = existing_team.vice_captain_id
 
-    live_match = Match.query.filter_by(status="live").first()
+#    live_match = Match.query.filter_by(status="live").first()
     any_match_started = Match.query.filter(
         Match.status.in_(["live", "completed"])
     ).first()
@@ -158,16 +158,19 @@ def select_team():
     return render_template("team_select.html", players=players,
                            user=user, selected_ids=selected_ids,
                            captain_id=captain_id, vc_id=vc_id,
-                           live_match=live_match,
+ #                          live_match=live_match,
                            any_match_started=any_match_started,
                            next_match=next_match,
                            next_match_teams=next_match_teams,
                            player_points=player_points)
 
+
 def get_or_create_transfer_window(user_id):
     from database import TransferWindow
-    last_match = Match.query.filter_by(status="completed").order_by(
-        Match.match_date.desc()).first()
+    # Window opens when a match goes live or completed
+    last_match = Match.query.filter(
+        Match.status.in_(["live", "completed"])
+    ).order_by(Match.match_date.desc()).first()
     window_match_id = last_match.id if last_match else 0
 
     window = TransferWindow.query.filter_by(

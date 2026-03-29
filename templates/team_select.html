@@ -3,20 +3,6 @@
 {% block content %}
 <h1 class="page-title">👥 Select Your Team</h1>
 
-{% if live_match %}
-<div style="background:#c62828; border-radius:10px; padding:16px 24px;
-            margin-bottom:24px; display:flex; align-items:center; gap:12px;">
-  <span style="font-size:24px;">🔒</span>
-  <div>
-    <div style="font-weight:bold; font-size:16px;">Transfers Locked!</div>
-    <div style="color:#ffcdd2; font-size:13px; margin-top:4px;">
-      {{ live_match.team1 }} vs {{ live_match.team2 }} is currently live.
-      Transfers will reopen once the match is completed.
-    </div>
-  </div>
-</div>
-{% endif %}
-
 <!-- Info Bar -->
 <div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;
             position:sticky; top:70px; z-index:999;
@@ -122,6 +108,11 @@
   </div>
 </div>
 
+<!-- Store next match teams as JS variable -->
+<script>
+  const nextMatchTeams = {{ next_match_teams | tojson }};
+</script>
+
 <!-- Players by Role -->
 {% for role, label, emoji in [('keeper','Wicket Keepers','🧤'), ('batsman','Batsmen','🏏'), ('allrounder','All Rounders','⚡'), ('bowler','Bowlers','🎯')] %}
 <div style="margin-bottom:28px;">
@@ -134,7 +125,9 @@
          data-team="{{ p.ipl_team }}"
          data-role="{{ p.role }}"
          data-points="{{ player_points.get(p.id, 0) }}"
+         data-credits="{{ p.credits }}"
          data-next-match="{{ 'yes' if p.ipl_team in next_match_teams else 'no' }}"
+         
          style="width:170px; cursor:pointer; border:2px solid transparent; padding:14px; text-align:center;"
          onclick="togglePlayer({{ p.id }}, {{ p.credits }}, '{{ p.name }}')">
       <div style="font-size:13px; font-weight:bold;">{{ p.name }}</div>
@@ -163,16 +156,9 @@
             padding:16px; text-align:center; border-top:2px solid #333; z-index:100;">
   <div id="errorMsg" style="color:#ef5350; margin-bottom:8px; font-size:14px;"></div>
   
-  {% if live_match %}
-<button class="btn" onclick="return false;"
-        style="padding:12px 40px; font-size:16px; background:#555; color:#aaa; cursor:not-allowed;">
-  🔒 Transfers Locked
-</button>
-{% else %}
-<button class="btn btn-primary" onclick="submitTeam()" style="padding:12px 40px; font-size:16px;">
-  Save Team 🏏
-</button>
-{% endif %}
+    <button class="btn btn-primary" onclick="submitTeam()" style="padding:12px 40px; font-size:16px;">
+      Save Team 🏏
+    </button>
 
 </div>
 
@@ -271,30 +257,40 @@
     document.getElementById("errorMsg").textContent = msg;
   }
 
-function filterPlayers() {
-    const team = document.getElementById("teamFilter").value;
-    const role = document.getElementById("roleFilter").value;
-    const minPoints = parseFloat(document.getElementById("pointsFilter").value);
-    const nextMatchOnly = document.getElementById("nextMatchFilter")?.checked || false;
+  function filterPlayers() {
+    const teamEl = document.getElementById("teamFilter");
+    const roleEl = document.getElementById("roleFilter");
+    const creditsEl = document.getElementById("creditsFilter");
+    const nextMatchEl = document.getElementById("nextMatchFilter");
+
+    const team = teamEl ? teamEl.value : "all";
+    const role = roleEl ? roleEl.value : "all";
+    const maxCredits = creditsEl ? parseFloat(creditsEl.value) : 12;
+    const nextMatchOnly = nextMatchEl ? nextMatchEl.checked : false;
 
     document.querySelectorAll(".player-card").forEach(card => {
       const matchTeam = team === "all" || card.dataset.team === team;
       const matchRole = role === "all" || card.dataset.role === role;
-      const matchPoints = parseFloat(card.dataset.points || 0) >= minPoints;
+      const matchCredits = parseFloat(card.dataset.credits || 11 ) <= maxCredits;
       const matchNext = !nextMatchOnly || card.dataset.nextMatch === "yes";
 
-      card.style.display = (matchTeam && matchRole && matchPoints && matchNext)
+      card.style.display = (matchTeam && matchRole && matchCredits && matchNext)
         ? "block" : "none";
     });
   }
 
   function resetFilters() {
-    document.getElementById("teamFilter").value = "all";
-    document.getElementById("roleFilter").value = "all";
-    document.getElementById("pointsFilter").value = 0;
-    document.getElementById("pointsVal").textContent = "0";
-    const nextFilter = document.getElementById("nextMatchFilter");
-    if (nextFilter) nextFilter.checked = false;
+    const teamEl = document.getElementById("teamFilter");
+    const roleEl = document.getElementById("roleFilter");
+    const creditsEl = document.getElementById("creditsFilter");
+    const creditsVal = document.getElementById("creditsVal");
+    const nextMatchEl = document.getElementById("nextMatchFilter");
+
+    if (teamEl) teamEl.value = "all";
+    if (roleEl) roleEl.value = "all";
+    if (creditsEl) creditsEl.value = 11;
+    if (creditsVal) creditsVal.textContent = "11";
+    if (nextMatchEl) nextMatchEl.checked = false;
     filterPlayers();
   }
 
