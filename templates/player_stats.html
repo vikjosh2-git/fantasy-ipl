@@ -1,90 +1,76 @@
 {% extends "base.html" %}
-{% block title %}Player Stats — F&F CricFans League{% endblock %}
+{% block title %}Players — Fantasy IPL{% endblock %}
 {% block content %}
-<h1 class="page-title">📊 Player Stats</h1>
+<h1 class="page-title">📊 Players</h1>
 
 <!-- Filters -->
-<div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; align-items:center;">
-  <div>
-    <label style="color:#aaa; font-size:13px; margin-right:8px;">Team:</label>
-    <select id="teamFilter" onchange="filterPlayers()"
-            style="width:auto; display:inline-block; padding:8px;">
-      <option value="all">All Teams</option>
-      <option value="Mumbai Indians">Mumbai Indians</option>
-      <option value="Chennai Super Kings">Chennai Super Kings</option>
-      <option value="Royal Challengers Bengaluru">Royal Challengers Bengaluru</option>
-      <option value="Kolkata Knight Riders">Kolkata Knight Riders</option>
-      <option value="Delhi Capitals">Delhi Capitals</option>
-      <option value="Rajasthan Royals">Rajasthan Royals</option>
-      <option value="Punjab Kings">Punjab Kings</option>
-      <option value="Sunrisers Hyderabad">Sunrisers Hyderabad</option>
-      <option value="Gujarat Titans">Gujarat Titans</option>
-      <option value="Lucknow Super Giants">Lucknow Super Giants</option>
-    </select>
-  </div>
-  <div>
-    <label style="color:#aaa; font-size:13px; margin-right:8px;">Role:</label>
-    <select id="roleFilter" onchange="filterPlayers()"
-            style="width:auto; display:inline-block; padding:8px;">
-      <option value="all">All Roles</option>
-      <option value="batsman">Batsmen</option>
-      <option value="bowler">Bowlers</option>
-      <option value="allrounder">All Rounders</option>
-      <option value="keeper">Wicket Keepers</option>
-    </select>
-  </div>
-  <div>
-    <label style="color:#aaa; font-size:13px; margin-right:8px;">Sort by:</label>
-    <select id="sortFilter" onchange="sortPlayers()"
-            style="width:auto; display:inline-block; padding:8px;">
-      <option value="points">Points</option>
-      <option value="runs">Runs</option>
-      <option value="wickets">Wickets</option>
-      <option value="matches">Matches Played</option>
-    </select>
-  </div>
-  <div style="margin-left:auto;">
-    <input type="text" id="searchInput" onkeyup="filterPlayers()"
-           placeholder="Search player..."
-           style="width:200px; padding:8px; display:inline-block;">
+<div class="card" style="margin-bottom:20px; padding:16px;">
+  <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
+    <div style="flex:2; min-width:180px;">
+      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">Search Player</div>
+      <input type="text" id="searchInput" onkeyup="filterPlayers()"
+             placeholder="Search by name..." style="margin:0; padding:8px;">
+    </div>
+    <div style="flex:1; min-width:160px;">
+      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">Team</div>
+      <select id="teamFilter" onchange="filterPlayers()" style="margin:0; padding:8px;">
+        <option value="all">All Teams</option>
+        <option value="Mumbai Indians">Mumbai Indians</option>
+        <option value="Chennai Super Kings">Chennai Super Kings</option>
+        <option value="Royal Challengers Bengaluru">Royal Challengers Bengaluru</option>
+        <option value="Kolkata Knight Riders">Kolkata Knight Riders</option>
+        <option value="Delhi Capitals">Delhi Capitals</option>
+        <option value="Rajasthan Royals">Rajasthan Royals</option>
+        <option value="Punjab Kings">Punjab Kings</option>
+        <option value="Sunrisers Hyderabad">Sunrisers Hyderabad</option>
+        <option value="Gujarat Titans">Gujarat Titans</option>
+        <option value="Lucknow Super Giants">Lucknow Super Giants</option>
+      </select>
+    </div>
+    <div style="flex:1; min-width:140px;">
+      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">Role</div>
+      <select id="roleFilter" onchange="filterPlayers()" style="margin:0; padding:8px;">
+        <option value="all">All Roles</option>
+        <option value="keeper">🧤 Keeper</option>
+        <option value="batsman">🏏 Batsman</option>
+        <option value="allrounder">⚡ All Rounder</option>
+        <option value="bowler">🎯 Bowler</option>
+      </select>
+    </div>
+    <div>
+      <button onclick="resetFilters()" class="btn btn-danger"
+              style="padding:8px 20px; font-size:13px;">
+        Reset Filters
+      </button>
+    </div>
   </div>
 </div>
 
-<!-- Stats Table -->
+<!-- Players Table -->
 <div class="card" style="overflow-x:auto;">
-  <table id="playersTable" style="width:100%; border-collapse:collapse; min-width:700px;">
+  <table style="width:100%; border-collapse:collapse;">
     <thead>
       <tr style="border-bottom:2px solid #333; color:#aaa; font-size:13px;">
-        <th style="padding:12px; text-align:left;">Rank</th>
-        <th style="padding:12px; text-align:left;">Player</th>
-        <th style="padding:12px; text-align:left;">Team</th>
-        <th style="padding:12px; text-align:left;">Role</th>
-        <th style="padding:12px; text-align:center;">MP</th>
-        <th style="padding:12px; text-align:center;">Runs</th>
-        <th style="padding:12px; text-align:center;">4s</th>
-        <th style="padding:12px; text-align:center;">6s</th>
-        <th style="padding:12px; text-align:center;">Wkts</th>
-        <th style="padding:12px; text-align:center;">Catches</th>
-        <th style="padding:12px; text-align:center; color:#f5a623;">Pts</th>
-        <th style="padding:12px; text-align:center;">Credits</th>
+        <th style="padding:12px; width:40px;">S#</th>
+        <th style="padding:12px;">Player</th>
+        <th style="padding:12px;">Team</th>
+        <th style="padding:12px;">Role</th>
+        <th style="padding:12px; text-align:right; color:#f5a623;">Pts</th>
+        <th style="padding:12px; text-align:right;">Credits</th>
+        <th style="padding:12px; width:40px;"></th>
       </tr>
     </thead>
     <tbody id="playersBody">
       {% for d in player_data %}
+      <!-- Player Row -->
       <tr class="player-row"
           data-team="{{ d.player.ipl_team }}"
           data-role="{{ d.player.role }}"
           data-name="{{ d.player.name.lower() }}"
-          data-points="{{ d.points }}"
-          data-runs="{{ d.runs }}"
-          data-wickets="{{ d.wickets }}"
-          data-matches="{{ d.matches }}"
-          style="border-bottom:1px solid #222;
-                 {% if d.player.id in my_player_ids %}
-                 background: #0a2a0a;
-                 {% endif %}">
-
-        <td style="padding:12px; color:#aaa;">{{ loop.index }}</td>
+          style="border-bottom:1px solid #222; cursor:pointer;
+                 {% if d.player.id in my_player_ids %}background:#0a2a0a;{% endif %}"
+          onclick="toggleBreakdown('breakdown-{{ d.player.id }}', this)">
+        <td style="padding:12px; color:#aaa;" class="rank-cell">{{ loop.index }}</td>
         <td style="padding:12px; font-weight:bold;">
           {{ d.player.name }}
           {% if d.player.id in my_player_ids %}
@@ -93,34 +79,221 @@
                        vertical-align:middle;">MY TEAM</span>
           {% endif %}
         </td>
-
-        <td style="padding:12px;">
-          <span style="background:#0f3460; padding:3px 8px; border-radius:6px;
-                       font-size:12px; color:#ccc;">
+        <td style="padding:12px; font-size:13px;">
+          <span style="background:#0f3460; padding:3px 8px;
+                       border-radius:6px; color:#ccc;">
             {{ d.player.ipl_team }}
           </span>
         </td>
         <td style="padding:12px;">
-          {% if d.player.role == "batsman" %}
-            <span style="color:#42a5f5;">🏏 Bat</span>
-          {% elif d.player.role == "bowler" %}
-            <span style="color:#ef5350;">🎯 Bowl</span>
-          {% elif d.player.role == "allrounder" %}
-            <span style="color:#66bb6a;">⚡ AR</span>
-          {% elif d.player.role == "keeper" %}
-            <span style="color:#ffa726;">🧤 WK</span>
+          {% if d.player.role == "batsman" %}<span style="color:#42a5f5;">🏏 Bat</span>
+          {% elif d.player.role == "bowler" %}<span style="color:#ef5350;">🎯 Bowl</span>
+          {% elif d.player.role == "allrounder" %}<span style="color:#66bb6a;">⚡ AR</span>
+          {% elif d.player.role == "keeper" %}<span style="color:#ffa726;">🧤 WK</span>
           {% endif %}
         </td>
-        <td style="padding:12px; text-align:center; color:#aaa;">{{ d.matches }}</td>
-        <td style="padding:12px; text-align:center;">{{ d.runs }}</td>
-        <td style="padding:12px; text-align:center; color:#aaa;">{{ d.fours }}</td>
-        <td style="padding:12px; text-align:center; color:#aaa;">{{ d.sixes }}</td>
-        <td style="padding:12px; text-align:center;">{{ d.wickets }}</td>
-        <td style="padding:12px; text-align:center; color:#aaa;">{{ d.catches }}</td>
-        <td style="padding:12px; text-align:center; font-weight:bold; color:#f5a623;">
+        <td style="padding:12px; text-align:right; font-weight:bold; color:#f5a623;">
           {{ d.points }}
         </td>
-        <td style="padding:12px; text-align:center; color:#aaa;">{{ d.player.credits }}</td>
+        <td style="padding:12px; text-align:right; color:#aaa;">
+          {{ d.player.credits }}
+        </td>
+        <td style="padding:12px; text-align:center; color:#f5a623; font-size:18px;"
+            id="arrow-{{ d.player.id }}">▼</td>
+      </tr>
+
+      <!-- Breakdown Row -->
+      <tr id="breakdown-{{ d.player.id }}"
+          style="display:none; background:#111827;">
+        <td colspan="7" style="padding:0;">
+          {% if d.match_breakdown %}
+          <div style="padding:16px;">
+            {% for m in d.match_breakdown %}
+            <div style="background:#16213e; border-radius:10px;
+                        margin-bottom:12px; padding:16px;">
+
+              <!-- Match Header -->
+              <div style="display:flex; justify-content:space-between;
+                          align-items:center; margin-bottom:12px;
+                          padding-bottom:8px; border-bottom:1px solid #333;">
+                <div>
+                  <span style="color:#f5a623; font-weight:bold;">
+                    Match {{ m.match.match_number }}
+                  </span>
+                  <span style="color:#aaa; font-size:13px; margin-left:8px;">
+                    {{ m.match.team1 }} vs {{ m.match.team2 }}
+                  </span>
+                  <span style="color:#aaa; font-size:12px; margin-left:8px;">
+                    {{ m.match.match_date.strftime('%b %d') }}
+                  </span>
+                </div>
+                <div style="font-size:20px; font-weight:bold; color:#f5a623;">
+                  {{ m.total }} pts
+                </div>
+              </div>
+
+              <!-- Points Grid -->
+              <div style="display:flex; flex-wrap:wrap; gap:12px;">
+
+                <!-- Playing & Bonus -->
+                <div style="flex:1; min-width:180px;">
+                  <div style="color:#aaa; font-size:11px; font-weight:bold;
+                              margin-bottom:8px; text-transform:uppercase;
+                              letter-spacing:1px;">
+                    🎯 Bonus Points
+                  </div>
+                  
+                  <div style="font-size:13px; color:#ccc; line-height:2;">
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Playing</span>
+                      <span style="color:#f5a623;">{{ m.playing_pts }}</span>
+                    </div>
+                    {% if m.winning_pts %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>🏆 Winning Team</span>
+                      <span style="color:#f5a623;">+{{ m.winning_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.mom_pts %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>⭐ Man of the Match</span>
+                      <span style="color:#f5a623;">+{{ m.mom_pts }}</span>
+                    </div>
+                    {% else %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span style="color:#555;">Man of the Match</span>
+                      <span style="color:#555;">—</span>
+                    </div>
+                    {% endif %}
+                  </div>
+                  
+                </div>
+
+                <!-- Batting -->
+                <div style="flex:1; min-width:180px;">
+                  <div style="color:#42a5f5; font-size:11px; font-weight:bold;
+                              margin-bottom:8px; text-transform:uppercase;
+                              letter-spacing:1px;">
+                    🏏 Batting ({{ m.batting_pts }} pts)
+                  </div>
+                  <div style="font-size:13px; color:#ccc; line-height:2;">
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Runs ({{ m.runs }})</span>
+                      <span style="color:#f5a623;">{{ m.runs_pts }}</span>
+                    </div>
+                    {% if m.fours %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Boundaries ({{ m.fours }}×4, {{ m.sixes }}×6)</span>
+                      <span style="color:#f5a623;">
+                        {{ m.fours * 1 + m.sixes * 2 }}
+                      </span>
+                    </div>
+                    {% endif %}
+                    {% if m.milestone_pts %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Milestone Bonus</span>
+                      <span style="color:#f5a623;">{{ m.milestone_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.duck_pts %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Duck Penalty</span>
+                      <span style="color:#ef5350;">{{ m.duck_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.sr is not none %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Strike Rate ({{ m.sr }})</span>
+                      <span style="color:{% if m.sr_pts >= 0 %}#f5a623{% else %}#ef5350{% endif %};">
+                        {{ m.sr_pts }}
+                      </span>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!-- Bowling -->
+                <div style="flex:1; min-width:180px;">
+                  <div style="color:#ef5350; font-size:11px; font-weight:bold;
+                              margin-bottom:8px; text-transform:uppercase;
+                              letter-spacing:1px;">
+                    🎯 Bowling ({{ m.bowling_pts }} pts)
+                  </div>
+                  <div style="font-size:13px; color:#ccc; line-height:2;">
+                    {% if m.wickets %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Wickets ({{ m.wickets }})</span>
+                      <span style="color:#f5a623;">{{ m.wickets_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.maidens %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Maidens ({{ m.maidens }})</span>
+                      <span style="color:#f5a623;">{{ m.maidens_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.bowling_milestone_pts %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Wicket Milestone</span>
+                      <span style="color:#f5a623;">{{ m.bowling_milestone_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.economy is not none %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Economy ({{ m.economy }})</span>
+                      <span style="color:{% if m.economy_pts >= 0 %}#f5a623{% else %}#ef5350{% endif %};">
+                        {{ m.economy_pts }}
+                      </span>
+                    </div>
+                    {% endif %}
+                    {% if m.bowling_pts == 0 %}
+                    <div style="color:#555; font-size:12px;">No bowling</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!-- Fielding -->
+                <div style="flex:1; min-width:180px;">
+                  <div style="color:#66bb6a; font-size:11px; font-weight:bold;
+                              margin-bottom:8px; text-transform:uppercase;
+                              letter-spacing:1px;">
+                    🧤 Fielding ({{ m.fielding_pts }} pts)
+                  </div>
+                  <div style="font-size:13px; color:#ccc; line-height:2;">
+                    {% if m.catches %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Catches ({{ m.catches }})</span>
+                      <span style="color:#f5a623;">{{ m.catches_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.run_outs %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Run Outs ({{ m.run_outs }})</span>
+                      <span style="color:#f5a623;">{{ m.runouts_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.stumpings %}
+                    <div style="display:flex; justify-content:space-between;">
+                      <span>Stumpings ({{ m.stumpings }})</span>
+                      <span style="color:#f5a623;">{{ m.stumpings_pts }}</span>
+                    </div>
+                    {% endif %}
+                    {% if m.fielding_pts == 0 %}
+                    <div style="color:#555; font-size:12px;">No fielding</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div style="padding:20px; text-align:center; color:#aaa; font-size:13px;">
+            No match data available yet.
+          </div>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -128,6 +301,20 @@
 </div>
 
 <script>
+  function toggleBreakdown(id, row) {
+    const breakdown = document.getElementById(id);
+    const playerId = id.replace("breakdown-", "");
+    const arrow = document.getElementById("arrow-" + playerId);
+    if (breakdown.style.display === "none") {
+      breakdown.style.display = "table-row";
+      arrow.textContent = "▲";
+      row.style.background = row.style.background || "#0f3460";
+    } else {
+      breakdown.style.display = "none";
+      arrow.textContent = "▼";
+    }
+  }
+
   function filterPlayers() {
     const team = document.getElementById("teamFilter").value;
     const role = document.getElementById("roleFilter").value;
@@ -139,29 +326,26 @@
       const matchTeam = team === "all" || row.dataset.team === team;
       const matchRole = role === "all" || row.dataset.role === role;
       const matchSearch = row.dataset.name.includes(search);
+      const playerId = row.querySelector("td:last-child").id?.replace("arrow-", "");
+      const breakdown = playerId ?
+        document.getElementById("breakdown-" + playerId) : null;
 
       if (matchTeam && matchRole && matchSearch) {
         row.style.display = "";
-        row.cells[0].textContent = rank++;
+        row.querySelector(".rank-cell").textContent = rank++;
+        // Keep breakdown state
       } else {
         row.style.display = "none";
+        if (breakdown) breakdown.style.display = "none";
       }
     });
   }
 
-  function sortPlayers() {
-    const sortBy = document.getElementById("sortFilter").value;
-    const tbody = document.getElementById("playersBody");
-    const rows = Array.from(document.querySelectorAll(".player-row"));
-
-    rows.sort((a, b) => {
-      return parseFloat(b.dataset[sortBy]) - parseFloat(a.dataset[sortBy]);
-    });
-
-    rows.forEach((row, i) => {
-      row.cells[0].textContent = i + 1;
-      tbody.appendChild(row);
-    });
+  function resetFilters() {
+    document.getElementById("teamFilter").value = "all";
+    document.getElementById("roleFilter").value = "all";
+    document.getElementById("searchInput").value = "";
+    filterPlayers();
   }
 </script>
 {% endblock %}

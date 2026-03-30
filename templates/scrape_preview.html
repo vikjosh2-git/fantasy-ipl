@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Scrape Preview — Fantasy IPL{% endblock %}
+{% block content %}
+<a href="/admin" style="color:#f5a623; text-decoration:none;">← Back to Admin</a>
+<h1 class="page-title" style="margin-top:16px;">
+  🔍 Scrape Preview — Match {{ match.match_number }}
+</h1>
+<div style="color:#aaa; margin-bottom:20px; font-size:14px;">
+  {{ match.team1 }} vs {{ match.team2 }} · {{ match.match_date.strftime('%b %d, %Y') }}
+</div>
+
+<!-- MOTM Notice -->
+<div style="background:#1a0a00; border:1px solid #f5a623; border-radius:8px;
+            padding:14px 18px; margin-bottom:20px; font-size:13px; color:#aaa;">
+  ⭐ <strong style="color:#f5a623;">Man of the Match</strong> is not available
+  from CricAPI. Please tick the MOTM checkbox manually for the correct player
+  before confirming import.
+</div>
+
+<!-- Summary -->
+<div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+  <div class="card" style="flex:1; text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Players Found</div>
+    <div style="font-size:28px; font-weight:bold; color:#43a047;">
+      {{ preview_data | selectattr('matched_player') | list | length }}
+    </div>
+  </div>
+  <div class="card" style="flex:1; text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Not Matched</div>
+    <div style="font-size:28px; font-weight:bold; color:#ef5350;">
+      {{ preview_data | rejectattr('matched_player') | list | length }}
+    </div>
+  </div>
+  <div class="card" style="flex:1; text-align:center;">
+    <div style="color:#aaa; font-size:13px;">Total Players</div>
+    <div style="font-size:28px; font-weight:bold; color:#f5a623;">
+      {{ preview_data | length }}
+    </div>
+  </div>
+</div>
+
+<!-- Preview Table -->
+<div class="card" style="margin-bottom:24px; overflow-x:auto;">
+  <table style="width:100%; border-collapse:collapse; min-width:800px;">
+    <thead>
+      <tr style="border-bottom:2px solid #333; color:#aaa; font-size:12px;">
+        <th style="padding:10px;">Status</th>
+        <th style="padding:10px; text-align:left;">CSV Name</th>
+        <th style="padding:10px; text-align:left;">Matched Player</th>
+        <th style="padding:10px;">Runs</th>
+        <th style="padding:10px;">Balls</th>
+        <th style="padding:10px;">4s</th>
+        <th style="padding:10px;">6s</th>
+        <th style="padding:10px;">Wkts</th>
+        <th style="padding:10px;">Overs</th>
+        <th style="padding:10px;">RC</th>
+        <th style="padding:10px;">Mdns</th>
+        <th style="padding:10px;">Ct</th>
+        <th style="padding:10px;">St</th>
+        <th style="padding:10px;">RO</th>
+        <th style="padding:10px;">
+          MOTM
+          <div style="color:#ef5350; font-size:10px; font-weight:normal;">
+            Tick manually
+          </div>
+        </th>
+        <th style="padding:10px;">Win</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in preview_data %}
+      <tr style="border-bottom:1px solid #222;
+                 {% if not d.matched_player %}background:#1a0000;{% endif %}">
+        <td style="padding:10px; text-align:center;">
+          {% if d.matched_player %}
+            <span style="color:#43a047; font-size:18px;">✅</span>
+          {% else %}
+            <span style="color:#ef5350; font-size:18px;">❌</span>
+          {% endif %}
+        </td>
+        <td style="padding:10px; font-size:13px;">{{ d.name_in_csv }}</td>
+        <td style="padding:10px; font-size:13px; color:#f5a623;">
+          {% if d.matched_player %}
+            {{ d.matched_player.name }}
+            <span style="color:#aaa; font-size:11px;">({{ d.matched_player.ipl_team }})</span>
+          {% else %}
+            <span style="color:#ef5350;">Not found in DB</span>
+          {% endif %}
+        </td>
+        <td style="padding:10px; text-align:center;">{{ d.row.runs }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.balls_faced }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.fours }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.sixes }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.wickets }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.overs_bowled }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.runs_conceded }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.maidens }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.catches }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.stumpings }}</td>
+        <td style="padding:10px; text-align:center;">{{ d.row.run_outs }}</td>
+        <td style="padding:10px; text-align:center;">
+          <input type="checkbox" name="motm_{{ loop.index }}"
+                 data-player="{{ d.name_in_csv }}"
+                 onchange="updateMOTM(this)"
+                 {% if d.row.is_motm == '1' %}checked{% endif %}>
+        </td>
+        <td style="padding:10px; text-align:center;">
+          {% if d.row.is_winner == '1' %}🏆{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Warning for unmatched players -->
+{% set unmatched = preview_data | rejectattr('matched_player') | list %}
+{% if unmatched %}
+<div style="background:#1a0000; border:1px solid #ef5350; border-radius:8px;
+            padding:16px; margin-bottom:24px;">
+  <div style="color:#ef5350; font-weight:bold; margin-bottom:8px;">
+    ⚠️ {{ unmatched | length }} player(s) not found in database
+  </div>
+  <div style="color:#aaa; font-size:13px;">
+    These players will be skipped. You can add them manually via the admin panel.
+    <br>Names not found:
+    {% for d in unmatched %}
+      <span style="color:#f5a623;">{{ d.name_in_csv }}</span>{% if not loop.last %}, {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Confirm / Cancel -->
+<div style="display:flex; gap:16px; justify-content:center; margin-bottom:40px;">
+
+<form method="POST" action="/admin/scrape-confirm" id="confirmForm">
+  <!-- Hidden field to store MOTM player name -->
+  <input type="hidden" name="motm_player" id="motmPlayer" value="">
+  <button type="submit" class="btn btn-success"
+          onclick="setMOTM()"
+          style="padding:14px 40px; font-size:16px;">
+    ✅ Confirm & Import
+  </button>
+</form>
+
+  <a href="/admin" class="btn btn-danger"
+     style="padding:14px 40px; font-size:16px;">
+    ❌ Cancel
+  </a>
+</div>
+
+<script>
+  // Only allow one MOTM at a time
+  function updateMOTM(checkbox) {
+    if (checkbox.checked) {
+      document.querySelectorAll('input[name^="motm_"]').forEach(cb => {
+        if (cb !== checkbox) cb.checked = false;
+      });
+    }
+  }
+ 
+  function setMOTM() {
+    const checked = document.querySelector('input[name^="motm_"]:checked');
+    if (checked) {
+      document.getElementById("motmPlayer").value = checked.dataset.player;
+    }
+  }
+</script>
+
+{% endblock %}

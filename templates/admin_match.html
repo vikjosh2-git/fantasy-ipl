@@ -9,14 +9,20 @@
 <form method="POST">
     <!-- Floating Save Button -->
     <div style="position:sticky; top:70px; z-index:999; text-align:center;
-                margin-bottom:24px;">
-        <button type="submit" class="btn btn-primary"
+                margin-bottom:24px; display:flex; justify-content:center; gap:16px;">
+        <button type="submit" name="action" value="save"
+                class="btn btn-primary"
                 style="padding:14px 50px; font-size:16px;
-                    box-shadow:0 4px 15px rgba(245,166,35,0.4);">
-        Save Updates
+                       box-shadow:0 4px 15px rgba(245,166,35,0.4);">
+            💾 Save Updates
+        </button>
+        <button type="submit" name="action" value="recalculate"
+                class="btn btn-info"
+                style="padding:14px 50px; font-size:16px;">
+            🔄 Recalculate Selected
         </button>
     </div>
-
+  
   <!-- Match Status -->
   <div class="card" style="margin-bottom:24px;">
     <h3 style="color:#f5a623; margin-bottom:16px;">Match Status</h3>
@@ -37,6 +43,7 @@
       <table style="width:100%; border-collapse:collapse; min-width:700px;">
         <thead>
           <tr style="border-bottom:2px solid #333; color:#aaa; font-size:13px;">
+            <th style="padding:10px; text-align:left;">Recalc</th>
             <th style="padding:10px; text-align:left;">Played</th>
             <th style="padding:10px; text-align:left;">Player</th>
             <th style="padding:10px; text-align:left;">Role</th>
@@ -60,8 +67,11 @@
           {% set stat = existing_stats.get(player.id) %}
           <tr style="border-bottom:1px solid #222;">
             <td style="padding:10px; text-align:center;">
+              <input type="checkbox" name="recalc_{{ player.id }}">
+            </td>
+            <td style="padding:10px; text-align:center;">
               <input type="checkbox" name="did_play_{{ player.id }}"
-                     {% if stat and stat.did_play %}checked{% endif %}>
+                    {% if stat and stat.did_play %}checked{% endif %}>
             </td>
             <td style="padding:10px; font-weight:bold; font-size:13px;">{{ player.name }}</td>
             <td style="padding:10px; color:#aaa; font-size:12px;">{{ player.role }}</td>
@@ -142,6 +152,7 @@
       <table style="width:100%; border-collapse:collapse; min-width:700px;">
         <thead>
           <tr style="border-bottom:2px solid #333; color:#aaa; font-size:13px;">
+            <th style="padding:10px; text-align:left;">Recalc</th>
             <th style="padding:10px; text-align:left;">Played</th>
             <th style="padding:10px; text-align:left;">Player</th>
             <th style="padding:10px; text-align:left;">Role</th>
@@ -165,8 +176,11 @@
           {% set stat = existing_stats.get(player.id) %}
           <tr style="border-bottom:1px solid #222;">
             <td style="padding:10px; text-align:center;">
+              <input type="checkbox" name="recalc_{{ player.id }}">
+            </td>
+            <td style="padding:10px; text-align:center;">
               <input type="checkbox" name="did_play_{{ player.id }}"
-                     {% if stat and stat.did_play %}checked{% endif %}>
+                    {% if stat and stat.did_play %}checked{% endif %}>
             </td>
             <td style="padding:10px; font-weight:bold; font-size:13px;">{{ player.name }}</td>
             <td style="padding:10px; color:#aaa; font-size:12px;">{{ player.role }}</td>

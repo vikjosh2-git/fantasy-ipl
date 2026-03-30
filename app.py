@@ -8,6 +8,10 @@ from flask import session
 from flask import flash
 from flask import jsonify
 from scoring_config import SCORING_CONFIG
+from scheduler import start_scheduler
+from scoring_config import SCORING_CONFIG
+from points_engine import save_player_stats, recalculate_user_points
+from scraper import fetch_cricapi_scorecard
 
 from werkzeug.security import generate_password_hash, check_password_hash
 from points import calculate_points
@@ -16,10 +20,10 @@ def utcnow():
     return datetime.now(timezone.utc)
 
 from scoring import process_match_points
-from cricapi import get_match_info
+# from cricapi import get_match_info
 from database import db, User, Player, Match, UserTeam, UserMatchTeam, PlayerMatchStats, League, LeagueMember, TransferWindow, TransferHistory
 
-
+import io
 import random
 import string
 
@@ -35,6 +39,10 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+    
+    # Start background scheduler
+    scheduler = start_scheduler(app)
+    
     # Auto-seed if database is empty
     from database import Player, Match
     if Player.query.count() == 0:
@@ -422,32 +430,39 @@ def admin_required(f):
 @app.route("/admin")
 @admin_required
 def admin():
-    matches = Match.query.order_by(Match.match_date).all()
-    return render_template("admin.html", matches=matches)
+    all_matches = Match.query.order_by(Match.match_date).all()
+    live_matches = Match.query.filter_by(status="live").order_by(Match.match_date).all()
+    completed_matches = Match.query.filter_by(status="completed").order_by(Match.match_date.desc()).all()
+    return render_template("admin.html",
+                           all_matches=all_matches,
+                           live_matches=live_matches,
+                           completed_matches=completed_matches)
 
 @app.route("/admin/match/<int:match_id>", methods=["GET", "POST"])
 @admin_required
 def admin_match(match_id):
     match = Match.query.get(match_id)
-    # Get players from both teams
     players = Player.query.filter(
         (Player.ipl_team == match.team1) |
         (Player.ipl_team == match.team2)
     ).order_by(Player.ipl_team, Player.role).all()
 
-    # Get existing stats if any
     existing_stats = {}
     for stat in PlayerMatchStats.query.filter_by(match_id=match_id).all():
         existing_stats[stat.player_id] = stat
 
     if request.method == "POST":
-        # Update match status
+        action = request.form.get("action", "save")
         new_status = request.form.get("match_status")
         if new_status:
             match.status = new_status
 
-        # Save player stats
         for player in players:
+            # For recalculate — only process checked players
+            if action == "recalculate":
+                if request.form.get(f"recalc_{player.id}") != "on":
+                    continue
+
             did_play = request.form.get(f"did_play_{player.id}") == "on"
             runs = int(request.form.get(f"runs_{player.id}", 0) or 0)
             balls_faced = int(request.form.get(f"balls_faced_{player.id}", 0) or 0)
@@ -462,8 +477,8 @@ def admin_match(match_id):
             run_outs = int(request.form.get(f"run_outs_{player.id}", 0) or 0)
             is_motm = request.form.get(f"is_motm_{player.id}") == "on"
             is_winner = request.form.get(f"is_winner_{player.id}") == "on"
-            
-            if not did_play:
+
+            if not did_play and action == "save":
                 continue
 
             stats_dict = {
@@ -478,58 +493,20 @@ def admin_match(match_id):
             }
             pts = calculate_points(stats_dict)
 
-            stat = existing_stats.get(player.id)
-            if stat:
-                stat.runs = runs; stat.balls_faced = balls_faced
-                stat.fours = fours; stat.sixes = sixes
-                stat.wickets = wickets; stat.overs_bowled = overs_bowled
-                stat.runs_conceded = runs_conceded; stat.maidens = maidens
-                stat.catches = catches; stat.stumpings = stumpings
-                stat.run_outs = run_outs; stat.did_play = did_play
-                stat.is_motm = is_motm; stat.is_winner = is_winner
-                stat.points_earned = pts
-            else:
-                stat = PlayerMatchStats(
-                    player_id=player.id, match_id=match_id,
-                    runs=runs, balls_faced=balls_faced,
-                    fours=fours, sixes=sixes,
-                    wickets=wickets, overs_bowled=overs_bowled,
-                    runs_conceded=runs_conceded, maidens=maidens,
-                    catches=catches, stumpings=stumpings,
-                    run_outs=run_outs, did_play=did_play,
-                    is_motm=is_motm, is_winner=is_winner,
-                    points_earned=pts
-                )
-                db.session.add(stat)
+            save_player_stats(player, match_id, stats_dict, existing_stats)
+
         db.session.commit()
 
-        # If match completed, calculate user points
-        if new_status == "completed":
-            snapshot_teams_for_match(match_id)
-            # Recalculate all user points for this match
-            all_stats = PlayerMatchStats.query.filter_by(match_id=match_id).all()
-            match_player_points = {s.player_id: s.points_earned for s in all_stats}
-            user_teams = UserMatchTeam.query.filter_by(match_id=match_id).all()
-            for ut in user_teams:
-                pid_list = [int(x) for x in ut.player_ids.split(",")]
-                total = 0
-                for pid in pid_list:
-                    pts = match_player_points.get(pid, 0)
-                    if pid == ut.captain_id:
-                        pts *= 2
-                    elif pid == ut.vice_captain_id:
-                        pts *= 1.5
-                    total += pts
-                # Remove old points if recalculating
-                old_points = ut.points_scored
-                ut.points_scored = total
-                user = User.query.get(ut.user_id)
-                if user:
-                    user.total_points = user.total_points - old_points + total
-            db.session.commit()
-            flash(f"Match {match.match_number} stats saved & points calculated!", "success")
+        # Recalculate user points whenever stats change
+        if new_status == "completed" or action == "recalculate":
+            recalculate_user_points(match_id, snapshot_teams_for_match)
+
+        if action == "recalculate":
+            flash("🔄 Selected players recalculated successfully!", "success")
+        elif new_status == "completed":
+            flash(f"✅ Match {match.match_number} completed & points calculated!", "success")
         else:
-            flash("Stats saved successfully!", "success")
+            flash("✅ Stats saved successfully!", "success")
 
         return redirect(url_for("admin_match", match_id=match_id))
 
@@ -578,40 +555,143 @@ def player_stats():
         return redirect(url_for("login"))
 
     players = Player.query.filter_by(is_active=True).order_by(Player.ipl_team).all()
-    
+
     # Get current user's team
     user_team = UserTeam.query.filter_by(user_id=session["user_id"]).first()
     my_player_ids = set()
     if user_team:
         my_player_ids = set(int(x) for x in user_team.player_ids.split(",") if x.strip())
 
-# Aggregate season stats for each player
+    from scoring_config import SCORING_CONFIG as c
+
     player_data = []
     for player in players:
         stats = PlayerMatchStats.query.filter_by(player_id=player.id).all()
-        total_runs = sum(s.runs for s in stats)
-        total_wickets = sum(s.wickets for s in stats)
-        total_catches = sum(s.catches for s in stats)
-        total_sixes = sum(s.sixes for s in stats)
-        total_fours = sum(s.fours for s in stats)
         total_points = sum(s.points_earned for s in stats)
         matches_played = len([s for s in stats if s.did_play])
+
+        # Build match breakdown
+        match_breakdown = []
+        for s in stats:
+            if not s.did_play:
+                continue
+            match = Match.query.get(s.match_id)
+            if not match:
+                continue
+
+            # Playing bonus
+            playing_pts = c["playing_bonus"]
+
+            # Winning points
+            winning_pts = c["winning_team"] if s.is_winner else 0
+
+            # MoM points
+            mom_pts = c["motm"] if s.is_motm else 0
+
+            # Batting points
+            runs_pts = s.runs * c["run"]
+            fours_pts = s.fours * c["four_bonus"]
+            sixes_pts = s.sixes * c["six_bonus"]
+            milestone_pts = 0
+            if s.runs >= 100: milestone_pts = c["century"]
+            elif s.runs >= 75: milestone_pts = c["seventy_five"]
+            elif s.runs >= 50: milestone_pts = c["half_century"]
+            elif s.runs >= 25: milestone_pts = c["twenty_five"]
+            duck_pts = c["duck"] if s.runs == 0 and player.role in ["batsman", "keeper", "allrounder"] else 0
+
+            # Strike rate points
+            sr_pts = 0
+            sr = None
+            if s.balls_faced >= c["sr_min_balls"] and player.role in c["sr_applicable_roles"]:
+                sr = round((s.runs / s.balls_faced) * 100, 1)
+                if sr > 170: sr_pts = c["sr_above_170"]
+                elif sr >= 150: sr_pts = c["sr_150_170"]
+                elif sr >= 130: sr_pts = c["sr_130_150"]
+                elif 60 <= sr < 70: sr_pts = c["sr_60_70"]
+                elif 50 <= sr < 60: sr_pts = c["sr_50_60"]
+                elif sr < 50: sr_pts = c["sr_below_50"]
+
+            batting_pts = runs_pts + fours_pts + sixes_pts + milestone_pts + duck_pts + sr_pts
+
+            # Bowling points
+            wickets_pts = s.wickets * c["wicket"]
+            maidens_pts = s.maidens * c["maiden"]
+            bowling_milestone_pts = 0
+            if s.wickets >= 5: bowling_milestone_pts = c["five_wickets"]
+            elif s.wickets >= 4: bowling_milestone_pts = c["four_wickets"]
+            elif s.wickets >= 3: bowling_milestone_pts = c["three_wickets"]
+
+            # Economy points
+            economy_pts = 0
+            economy = None
+            if s.overs_bowled >= c["economy_min_overs"] and player.role in c["economy_applicable_roles"]:
+                economy = round(s.runs_conceded / s.overs_bowled, 1)
+                if economy < 5: economy_pts = c["economy_below_5"]
+                elif economy < 6: economy_pts = c["economy_5_6"]
+                elif economy < 7: economy_pts = c["economy_6_7"]
+                elif 10 <= economy < 11: economy_pts = c["economy_10_11"]
+                elif 11 <= economy < 12: economy_pts = c["economy_11_12"]
+                elif economy >= 12: economy_pts = c["economy_above_12"]
+
+            bowling_pts = wickets_pts + maidens_pts + bowling_milestone_pts + economy_pts
+
+            # Fielding points
+            catches_pts = s.catches * c["catch"]
+            runouts_pts = s.run_outs * c["run_out"]
+            stumpings_pts = s.stumpings * c["stumping"]
+            fielding_pts = catches_pts + runouts_pts + stumpings_pts
+
+            match_breakdown.append({
+                "match": match,
+                "total": round(s.points_earned, 1),
+                # Playing & bonus
+                "playing_pts": playing_pts,
+                "winning_pts": winning_pts,
+                "mom_pts": mom_pts,
+                # Batting
+                "batting_pts": round(batting_pts, 1),
+                "runs": s.runs,
+                "runs_pts": runs_pts,
+                "fours": s.fours,
+                "sixes": s.sixes,
+                "milestone_pts": milestone_pts,
+                "duck_pts": duck_pts,
+                "sr": sr,
+                "sr_pts": sr_pts,
+                # Bowling
+                "bowling_pts": round(bowling_pts, 1),
+                "wickets": s.wickets,
+                "wickets_pts": wickets_pts,
+                "maidens": s.maidens,
+                "maidens_pts": maidens_pts,
+                "bowling_milestone_pts": bowling_milestone_pts,
+                "economy": economy,
+                "economy_pts": economy_pts,
+                # Fielding
+                "fielding_pts": round(fielding_pts, 1),
+                "catches": s.catches,
+                "catches_pts": catches_pts,
+                "run_outs": s.run_outs,
+                "runouts_pts": runouts_pts,
+                "stumpings": s.stumpings,
+                "stumpings_pts": stumpings_pts,
+            })
+
+        # Sort by match date descending
+        match_breakdown.sort(key=lambda x: x["match"].match_date, reverse=True)
 
         player_data.append({
             "player": player,
             "matches": matches_played,
-            "runs": total_runs,
-            "fours": total_fours,
-            "sixes": total_sixes,
-            "wickets": total_wickets,
-            "catches": total_catches,
-            "points": total_points
+            "points": round(total_points, 1),
+            "match_breakdown": match_breakdown
         })
 
-    # Sort by points descending
     player_data.sort(key=lambda x: x["points"], reverse=True)
 
-    return render_template("player_stats.html", player_data=player_data, my_player_ids=my_player_ids)
+    return render_template("player_stats.html", player_data=player_data,
+                           my_player_ids=my_player_ids)
+
 @app.route("/league/<int:league_id>/compare/<int:opponent_id>")
 def compare_teams(league_id, opponent_id):
     if "user_id" not in session:
@@ -703,6 +783,247 @@ def compare_teams(league_id, opponent_id):
                            user_wins=user_wins,
                            opponent_wins=opponent_wins,
                            draws=draws)
+
+import csv
+import io
+
+@app.route("/admin/upload-csv", methods=["POST"])
+@admin_required
+def upload_csv():
+    match_id = request.form.get("match_id")
+    csv_file = request.files.get("csv_file")
+
+    if not match_id or not csv_file:
+        flash("Please select a match and upload a CSV file!", "error")
+        return redirect(url_for("admin"))
+
+    match = Match.query.get(match_id)
+    if not match:
+        flash("Match not found!", "error")
+        return redirect(url_for("admin"))
+
+    # Read CSV
+    try:
+        stream = io.StringIO(csv_file.stream.read().decode("utf-8"))
+        reader = csv.DictReader(stream)
+        # Strip whitespace from headers
+        reader.fieldnames = [h.strip() for h in reader.fieldnames]
+    except Exception as e:
+        flash(f"Error reading CSV: {e}", "error")
+        return redirect(url_for("admin"))
+
+    # Get all players for name matching
+    all_players = Player.query.all()
+    player_map = {p.name.lower().strip(): p for p in all_players}
+
+    success_count = 0
+    not_found = []
+
+    for row in reader:
+        # Strip whitespace from all values
+        row = {k.strip(): v.strip() for k, v in row.items()}
+        player_name = row.get("player_name", "").lower().strip()
+
+        # Find player in DB
+        player = player_map.get(player_name)
+        if not player:
+            # Try partial match
+            for db_name, db_player in player_map.items():
+                if player_name in db_name or db_name in player_name:
+                    player = db_player
+                    break
+
+        if not player:
+            not_found.append(row.get("player_name", "Unknown"))
+            continue
+
+        # Parse stats
+        stats_dict = {
+            "runs": int(row.get("runs", 0) or 0),
+            "balls_faced": int(row.get("balls_faced", 0) or 0),
+            "fours": int(row.get("fours", 0) or 0),
+            "sixes": int(row.get("sixes", 0) or 0),
+            "wickets": int(row.get("wickets", 0) or 0),
+            "overs_bowled": float(row.get("overs_bowled", 0) or 0),
+            "runs_conceded": int(row.get("runs_conceded", 0) or 0),
+            "maidens": int(row.get("maidens", 0) or 0),
+            "catches": int(row.get("catches", 0) or 0),
+            "stumpings": int(row.get("stumpings", 0) or 0),
+            "run_outs": int(row.get("run_outs", 0) or 0),
+            "is_motm": row.get("is_motm", "0").strip() in ["1", "true", "True", "yes"],
+            "is_winner": row.get("is_winner", "0").strip() in ["1", "true", "True", "yes"],
+            "did_play": row.get("did_play", "0").strip() in ["1", "true", "True", "yes"],
+            "role": player.role
+        }
+
+# Get existing stats for this player
+        existing = {s.player_id: s for s in
+                   PlayerMatchStats.query.filter_by(match_id=match.id).all()}
+        save_player_stats(player, match.id, stats_dict, existing)
+        success_count += 1
+
+    db.session.commit()
+
+    # Calculate user points and mark completed
+    recalculate_user_points(match.id, snapshot_teams_for_match)
+    match.status = "completed"
+    db.session.commit()
+
+    # Show results
+    msg = f"✅ {success_count} players processed successfully!"
+    if not_found:
+        msg += f" ⚠️ Players not found: {', '.join(not_found)}"
+    flash(msg, "success" if not not_found else "info")
+    return redirect(url_for("admin"))
+
+
+import atexit
+atexit.register(lambda: scheduler.shutdown())
+@app.route("/admin/scrape-scorecard", methods=["POST"])
+@admin_required
+def scrape_scorecard():
+    match_id = request.form.get("match_id")
+    if not match_id:
+        flash("Please select a match!", "error")
+        return redirect(url_for("admin"))
+
+# Get the cricapi_match_id from the selected match
+    match = Match.query.get(match_id)
+    if not match or not match.cricapi_match_id:
+        flash("This match has no CricAPI ID configured!", "error")
+        return redirect(url_for("admin"))
+    csv_content, error = fetch_cricapi_scorecard(match.cricapi_match_id)
+    
+    if error:
+        flash(f"Scraping failed: {error}", "error")
+        return redirect(url_for("admin"))
+
+    # Store CSV in session temporarily and redirect to preview
+    session["scraped_csv"] = csv_content
+    session["scrape_match_id"] = match_id
+    flash("✅ Scorecard scraped successfully! Review and confirm below.", "success")
+    return redirect(url_for("scrape_preview"))
+
+@app.route("/admin/scrape-preview")
+@admin_required
+def scrape_preview():
+    csv_content = session.get("scraped_csv")
+    match_id = session.get("scrape_match_id")
+
+    if not csv_content or not match_id:
+        flash("No scraped data found!", "error")
+        return redirect(url_for("admin"))
+
+    match = Match.query.get(match_id)
+
+    # Parse CSV for preview
+    import csv as csv_module
+    reader = csv_module.DictReader(io.StringIO(csv_content))
+    rows = list(reader)
+
+    # Match players to our DB
+    all_players = Player.query.all()
+    player_map = {p.name.lower(): p for p in all_players}
+
+    preview_data = []
+    for row in rows:
+        name = row["player_name"].strip()
+        matched = player_map.get(name.lower())
+        if not matched:
+            # Try partial match
+            for db_name, db_player in player_map.items():
+                if name.lower() in db_name or db_name in name.lower():
+                    matched = db_player
+                    break
+        preview_data.append({
+            "row": row,
+            "matched_player": matched,
+            "name_in_csv": name
+        })
+
+    return render_template("scrape_preview.html",
+                           match=match,
+                           preview_data=preview_data,
+                           csv_content=csv_content)
+
+@app.route("/admin/scrape-confirm", methods=["POST"])
+@admin_required
+def scrape_confirm():
+    csv_content = session.get("scraped_csv")
+    match_id = session.get("scrape_match_id")
+
+    if not csv_content or not match_id:
+        flash("No scraped data found!", "error")
+        return redirect(url_for("admin"))
+
+    # Use existing upload_csv logic by creating a fake file object
+    import csv as csv_module
+    match = Match.query.get(match_id)
+    reader = csv_module.DictReader(io.StringIO(csv_content))
+    reader.fieldnames = [h.strip() for h in reader.fieldnames]
+
+    all_players = Player.query.all()
+    player_map = {p.name.lower().strip(): p for p in all_players}
+
+    success_count = 0
+    not_found = []
+
+    for row in reader:
+        row = {k.strip(): v.strip() for k, v in row.items()}
+        player_name = row.get("player_name", "").lower().strip()
+
+        player = player_map.get(player_name)
+        if not player:
+            for db_name, db_player in player_map.items():
+                if player_name in db_name or db_name in player_name:
+                    player = db_player
+                    break
+
+        if not player:
+            not_found.append(row.get("player_name", "Unknown"))
+            continue
+        
+        motm_player = request.form.get("motm_player", "").strip().lower()
+        is_motm = motm_player and (
+            motm_player in player_name or player_name in motm_player)
+        
+        stats_dict = {
+            "runs": int(row.get("runs", 0) or 0),
+            "balls_faced": int(row.get("balls_faced", 0) or 0),
+            "fours": int(row.get("fours", 0) or 0),
+            "sixes": int(row.get("sixes", 0) or 0),
+            "wickets": int(row.get("wickets", 0) or 0),
+            "overs_bowled": float(row.get("overs_bowled", 0) or 0),
+            "runs_conceded": int(row.get("runs_conceded", 0) or 0),
+            "maidens": int(row.get("maidens", 0) or 0),
+            "catches": int(row.get("catches", 0) or 0),
+            "stumpings": int(row.get("stumpings", 0) or 0),
+            "run_outs": int(row.get("run_outs", 0) or 0),
+                        "is_motm": is_motm,
+            "is_winner": row.get("is_winner", "0") in ["1", "true", "True", "yes"],
+            "did_play": row.get("did_play", "0") in ["1", "true", "True", "yes"],
+            "role": player.role
+        }
+
+        existing = {s.player_id: s for s in
+                   PlayerMatchStats.query.filter_by(match_id=match.id).all()}
+        save_player_stats(player, match.id, stats_dict, existing)
+        success_count += 1
+
+    db.session.commit()
+    recalculate_user_points(match.id, snapshot_teams_for_match)
+    match.status = "completed"
+    db.session.commit()
+
+    # Clear session
+    session.pop("scraped_csv", None)
+    session.pop("scrape_match_id", None)
+
+    msg = f"✅ {success_count} players imported successfully!"
+    if not_found:
+        msg += f" ⚠️ Not found: {', '.join(not_found)}"
+    flash(msg, "success")
+    return redirect(url_for("admin"))
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
