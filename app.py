@@ -28,7 +28,10 @@ import random
 import string
 
 
+app = Flask(__name__)
 import os
+
+app.secret_key = os.environ.get("SECRET_KEY", "fantasy-ipl-secret-key")
 
 # Use PostgreSQL if DATABASE_URL is set, otherwise fall back to SQLite
 database_url = os.environ.get("DATABASE_URL")
@@ -37,15 +40,13 @@ if database_url:
 else:
     app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///fantasy_ipl.db"
 
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 #import os
 #app.secret_key = os.environ.get("SECRET_KEY", "fantasy-ipl-secret-key")
 
 #app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///fantasy_ipl.db"
 #app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-
-app = Flask(__name__)
 
 db.init_app(app)
 
