@@ -135,13 +135,25 @@ def dashboard():
 
     # Get next upcoming match for countdown
     next_match = Match.query.filter_by(status="upcoming").order_by(Match.match_date).first()
+    # Convert match time to UTC timestamp for accurate countdown
+    next_match_utc_timestamp = None
+    if next_match:
+        from datetime import timezone, timedelta
+        # match_date is stored as IST naive datetime
+        # Attach IST timezone then convert to UTC timestamp
+        ist = timezone(timedelta(hours=5, minutes=30))
+        match_ist = next_match.match_date.replace(tzinfo=ist)
+        next_match_utc_timestamp = int(match_ist.timestamp() * 1000)
+
+
 
     return render_template("dashboard.html", user=user,
                            upcoming_matches=upcoming_matches,
                            live_matches=live_matches,
                            players=players,
                            user_team=user_team,
-                           next_match=next_match)
+                           next_match=next_match,
+                           next_match_utc_timestamp=next_match_utc_timestamp)
 
 # ─── Team Selection ───────────────────────────────────────────
 

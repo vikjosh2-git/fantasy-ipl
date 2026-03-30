@@ -2,12 +2,26 @@ import urllib.request
 import json
 import csv
 import io
+import os
 
 API_KEY = "0fcdf764-1fd7-46b9-9d4c-6698264d48ee"
 BASE_URL = "https://api.cricapi.com/v1"
+CACHE_DIR = "scorecard_cache"
 
 def fetch_cricapi_scorecard(match_api_id):
-    """Fetch and parse scorecard from CricAPI."""
+    """Fetch and parse scorecard from CricAPI with local caching."""
+
+    # Check cache first — never hit API twice for same match
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    cache_file = os.path.join(CACHE_DIR, f"{match_api_id}.json")
+
+    if os.path.exists(cache_file):
+        print(f"📦 Using cached scorecard for {match_api_id}")
+        with open(cache_file, "r") as f:
+            match_data = json.load(f)
+        return parse_cricapi_scorecard(match_data)
+
+    # Fetch from API
     try:
         url = f"{BASE_URL}/match_scorecard?apikey={API_KEY}&id={match_api_id}"
         response = urllib.request.urlopen(url)
@@ -16,11 +30,17 @@ def fetch_cricapi_scorecard(match_api_id):
         return None, f"Failed to fetch CricAPI: {e}"
 
     if data.get("status") != "success":
-        return None, f"CricAPI error: {data.get('status', 'Unknown error')}"
+        reason = data.get("reason", "Unknown error")
+        return None, f"CricAPI error: {data.get('status')} - {reason}"
 
     match_data = data.get("data", {})
     if not match_data.get("scorecard"):
         return None, "No scorecard data available yet. Match may not be complete."
+
+    # Save to cache
+    with open(cache_file, "w") as f:
+        json.dump(match_data, f)
+    print(f"✅ Scorecard fetched and cached for {match_api_id}")
 
     return parse_cricapi_scorecard(match_data)
 
@@ -30,7 +50,6 @@ def parse_cricapi_scorecard(match_data):
         winning_team = match_data.get("matchWinner", "")
         scorecard = match_data.get("scorecard", [])
         teams = match_data.get("teams", [])
-
 
         # Extract MOTM from match data
         motm_name = ""
