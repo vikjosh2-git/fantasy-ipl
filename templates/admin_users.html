@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Manage Users — Fantasy IPL{% endblock %}
+{% block content %}
+<a href="/admin" style="color:#f5a623; text-decoration:none;">← Back to Admin</a>
+<h1 class="page-title" style="margin-top:16px;">👥 Manage Users</h1>
+
+<div class="card">
+  <table style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="border-bottom:2px solid #333; color:#aaa; font-size:13px;">
+        <th style="padding:12px; text-align:left;">Username</th>
+        <th style="padding:12px; text-align:left;">Team</th>
+        <th style="padding:12px; text-align:left;">Email</th>
+        <th style="padding:12px; text-align:center;">Admin</th>
+        <th style="padding:12px; text-align:center;">Points</th>
+        <th style="padding:12px; text-align:center;">Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+      <tr style="border-bottom:1px solid #222;
+                 {% if user.id == current_user_id %}background:#0f3460;{% endif %}">
+        <td style="padding:12px; font-weight:bold;">
+          {{ user.username }}
+          {% if user.id == current_user_id %}
+          <span style="color:#aaa; font-size:11px;">(you)</span>
+          {% endif %}
+        </td>
+        <td style="padding:12px; color:#f5a623;">{{ user.team_name }}</td>
+        <td style="padding:12px; color:#aaa; font-size:13px;">{{ user.email }}</td>
+        <td style="padding:12px; text-align:center;">
+          {% if user.is_admin %}
+          <span style="color:#43a047; font-weight:bold;">✅ Admin</span>
+          {% else %}
+          <span style="color:#aaa;">—</span>
+          {% endif %}
+        </td>
+        <td style="padding:12px; text-align:center; color:#f5a623;">
+          {{ user.total_points }}
+        </td>
+        <td style="padding:12px; text-align:center;">
+          {% if user.id != current_user_id %}
+          <a href="/admin/toggle-admin/{{ user.id }}"
+             class="btn {% if user.is_admin %}btn-danger{% else %}btn-success{% endif %}"
+             style="padding:6px 16px; font-size:12px;"
+             onclick="return confirm('{{ 'Revoke' if user.is_admin else 'Grant' }} admin for {{ user.username }}?')">
+            {% if user.is_admin %}Revoke Admin{% else %}Grant Admin{% endif %}
+          </a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

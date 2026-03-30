@@ -27,13 +27,25 @@ import io
 import random
 import string
 
-app = Flask(__name__)
 
 import os
-app.secret_key = os.environ.get("SECRET_KEY", "fantasy-ipl-secret-key")
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///fantasy_ipl.db"
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+# Use PostgreSQL if DATABASE_URL is set, otherwise fall back to SQLite
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///fantasy_ipl.db"
+
+
+#import os
+#app.secret_key = os.environ.get("SECRET_KEY", "fantasy-ipl-secret-key")
+
+#app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///fantasy_ipl.db"
+#app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+
+app = Flask(__name__)
 
 db.init_app(app)
 
@@ -1024,6 +1036,26 @@ def scrape_confirm():
         msg += f" ⚠️ Not found: {', '.join(not_found)}"
     flash(msg, "success")
     return redirect(url_for("admin"))
+
+@app.route("/admin/users")
+@admin_required
+def admin_users():
+    users = User.query.order_by(User.username).all()
+    return render_template("admin_users.html", users=users, 
+                            current_user_id=session["user_id"])
+
+@app.route("/admin/toggle-admin/<int:user_id>")
+@admin_required
+def toggle_admin(user_id):
+    user = User.query.get(user_id)
+    if user.id == session["user_id"]:
+        flash("You cannot change your own admin status!", "error")
+        return redirect(url_for("admin_users"))
+    user.is_admin = not user.is_admin
+    db.session.commit()
+    status = "granted" if user.is_admin else "revoked"
+    flash(f"Admin access {status} for {user.username}!", "success")
+    return redirect(url_for("admin_users"))
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
