@@ -1,0 +1,395 @@
+{% extends "base.html" %}
+{% block title %}Rules — F&F CricFans League{% endblock %}
+{% block content %}
+
+<h1 class="page-title">📋 Rules & Scoring Guide</h1>
+
+<!-- Quick Nav -->
+<div class="card" style="margin-bottom:24px; padding:16px;">
+  <div style="display:flex; flex-wrap:wrap; gap:10px;">
+    {% for anchor, label in [
+      ('how-to-play', '🏏 How to Play'),
+      ('team-rules', '👥 Team Rules'),
+      ('transfers', '🔄 Transfers'),
+      ('captain', '👑 Captain & VC'),
+      ('scoring', '⭐ Scoring'),
+      ('batting', '🏏 Batting'),
+      ('bowling', '🎯 Bowling'),
+      ('fielding', '🧤 Fielding'),
+    ] %}
+    <a href="#{{ anchor }}"
+       style="background:#16213e; color:#f5a623; padding:6px 14px;
+              border-radius:20px; text-decoration:none; font-size:13px;
+              border:1px solid #333;">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- How to Play -->
+<div class="card" style="margin-bottom:20px;" id="how-to-play">
+  <h2 style="color:#f5a623; margin-bottom:16px;">🏏 How to Play</h2>
+  <div style="color:#ccc; font-size:14px; line-height:2;">
+    <p style="margin-bottom:12px;">
+      Welcome to <strong style="color:#f5a623;">F&F CricFans League</strong> —
+      a season-long fantasy cricket game for friends and family
+      following IPL {{ 2026 }}.
+    </p>
+    <ol style="padding-left:20px;">
+      <li style="margin-bottom:10px;">
+        <strong style="color:white;">Register & Create Your Team</strong> —
+        Sign up, pick a team name, and select 11 players from across all
+        10 IPL teams within a budget of <strong style="color:#f5a623;">100 credits</strong>.
+      </li>
+      <li style="margin-bottom:10px;">
+        <strong style="color:white;">Pick a Captain & Vice Captain</strong> —
+        Your Captain earns <strong style="color:#f5a623;">2x points</strong>
+        and Vice Captain earns
+        <strong style="color:#f5a623;">1.5x points</strong>
+        for each match. Choose wisely!
+      </li>
+      <li style="margin-bottom:10px;">
+        <strong style="color:white;">Earn Points</strong> —
+        Your players earn fantasy points based on their real-life
+        performances in each IPL match. Points are updated after every match.
+      </li>
+      <li style="margin-bottom:10px;">
+        <strong style="color:white;">Make Transfers</strong> —
+        You have a season budget of
+        <strong style="color:#f5a623;">{{ c.season_transfers }} transfers</strong>.
+        Use them to swap players between matches.
+        Transfers are free before the season starts!
+      </li>
+      <li style="margin-bottom:10px;">
+        <strong style="color:white;">Climb the Leaderboard</strong> —
+        Accumulate points across all matches.
+        The player with the highest total at the end of the season wins!
+      </li>
+      <li style="margin-bottom:10px;">
+        <strong style="color:white;">Mini Leagues</strong> —
+        Create or join private mini leagues with friends.
+        Compete head-to-head within your own group!
+      </li>
+    </ol>
+  </div>
+</div>
+
+<!-- Team Rules -->
+<div class="card" style="margin-bottom:20px;" id="team-rules">
+  <h2 style="color:#f5a623; margin-bottom:16px;">👥 Team Selection Rules</h2>
+  <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr style="background:#16213e; color:#aaa; font-size:12px;">
+          <th style="padding:12px; text-align:left;">Rule</th>
+          <th style="padding:12px; text-align:center;">Minimum</th>
+          <th style="padding:12px; text-align:center;">Maximum</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for label, mn, mx in [
+          ('Total Players', c.team_size, c.team_size),
+          ('Batsmen 🏏', c.min_batsmen, c.max_batsmen),
+          ('Bowlers 🎯', c.min_bowlers, c.max_bowlers),
+          ('All-Rounders ⚡', c.min_allrounders, c.max_allrounders),
+          ('Wicket Keepers 🧤', c.min_keepers, c.max_keepers),
+        ] %}
+        <tr style="border-bottom:1px solid #222;">
+          <td style="padding:12px; color:#ccc;">{{ label }}</td>
+          <td style="padding:12px; text-align:center; color:#43a047; font-weight:bold;">{{ mn }}</td>
+          <td style="padding:12px; text-align:center; color:#f5a623; font-weight:bold;">{{ mx }}</td>
+        </tr>
+        {% endfor %}
+        <tr style="border-bottom:1px solid #222;">
+          <td style="padding:12px; color:#ccc;">Overseas Players 🌍</td>
+          <td style="padding:12px; text-align:center; color:#43a047; font-weight:bold;">0</td>
+          <td style="padding:12px; text-align:center; color:#f5a623; font-weight:bold;">{{ c.max_overseas }}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #222;">
+          <td style="padding:12px; color:#ccc;">Players from Same IPL Team</td>
+          <td style="padding:12px; text-align:center; color:#43a047; font-weight:bold;">0</td>
+          <td style="padding:12px; text-align:center; color:#f5a623; font-weight:bold;">{{ c.max_players_per_team }}</td>
+        </tr>
+        <tr>
+          <td style="padding:12px; color:#ccc;">Budget</td>
+          <td style="padding:12px; text-align:center; color:#43a047; font-weight:bold;">—</td>
+          <td style="padding:12px; text-align:center; color:#f5a623; font-weight:bold;">100 cr</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:14px; padding:12px; background:#0f1a2e;
+              border-radius:8px; color:#aaa; font-size:13px;">
+    💡 Your team is <strong style="color:white;">locked</strong> once a match
+    involving your players goes live. Make sure to update your team
+    <strong style="color:#f5a623;">before the match starts!</strong>
+  </div>
+</div>
+
+<!-- Transfers -->
+<div class="card" style="margin-bottom:20px;" id="transfers">
+  <h2 style="color:#f5a623; margin-bottom:16px;">🔄 Transfers</h2>
+  <div style="color:#ccc; font-size:14px; line-height:2;">
+    <ul style="padding-left:20px;">
+      <li style="margin-bottom:8px;">
+        You have <strong style="color:#f5a623;">{{ c.season_transfers }} transfers</strong>
+        for the entire season.
+      </li>
+      <li style="margin-bottom:8px;">
+        <strong style="color:white;">Before the season starts</strong> —
+        unlimited free changes. Build your perfect squad!
+      </li>
+      <li style="margin-bottom:8px;">
+        <strong style="color:white;">During the season</strong> —
+        each net player swap costs 1 transfer.
+        Swapping player A for player B = 1 transfer used.
+      </li>
+      <li style="margin-bottom:8px;">
+        Transfers reset per window — swapping the same player back
+        in a window does <strong style="color:white;">not</strong>
+        cost extra transfers.
+      </li>
+      <li style="margin-bottom:8px;">
+        <strong style="color:#ef5350;">Unused transfers do not carry over</strong>
+        between windows — use them wisely!
+      </li>
+      <li style="margin-bottom:8px;">
+        All team rules (overseas limit, role limits etc.)
+        must still be satisfied after transfers.
+      </li>
+    </ul>
+  </div>
+</div>
+
+<!-- Captain & VC -->
+<div class="card" style="margin-bottom:20px;" id="captain">
+  <h2 style="color:#f5a623; margin-bottom:16px;">👑 Captain & Vice Captain</h2>
+  <div style="display:flex; gap:16px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:200px; background:#1a2a0a;
+                border:1px solid #f5a623; border-radius:10px; padding:16px; text-align:center;">
+      <div style="font-size:28px;">👑</div>
+      <div style="color:#f5a623; font-weight:bold; font-size:16px; margin-top:8px;">Captain</div>
+      <div style="font-size:32px; font-weight:bold; color:white; margin:8px 0;">{{ c.captain_multiplier }}x</div>
+      <div style="color:#aaa; font-size:13px;">
+        Earns double points for every match performance
+      </div>
+    </div>
+    <div style="flex:1; min-width:200px; background:#0a1a0a;
+                border:1px solid #81c784; border-radius:10px; padding:16px; text-align:center;">
+      <div style="font-size:28px;">🥈</div>
+      <div style="color:#81c784; font-weight:bold; font-size:16px; margin-top:8px;">Vice Captain</div>
+      <div style="font-size:32px; font-weight:bold; color:white; margin:8px 0;">{{ c.vc_multiplier }}x</div>
+      <div style="color:#aaa; font-size:13px;">
+        Earns 1.5x points for every match performance
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:14px; padding:12px; background:#0f1a2e;
+              border-radius:8px; color:#aaa; font-size:13px;">
+    💡 Pick a player who is <strong style="color:white;">guaranteed to play</strong>
+    and likely to have a big match. All-rounders and top-order batsmen
+    are popular captain choices!
+  </div>
+</div>
+
+<!-- Scoring Overview -->
+<div class="card" style="margin-bottom:20px;" id="scoring">
+  <h2 style="color:#f5a623; margin-bottom:16px;">⭐ Scoring Overview</h2>
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+    {% for label, pts, color in [
+      ('Man of the Match', '+' + c.motm|string, '#ffd700'),
+      ('Playing XI', '+' + c.playing_bonus|string, '#43a047'),
+      ('Winning Team', '+' + c.winning_team|string, '#43a047'),
+    ] %}
+    <div style="flex:1; min-width:150px; background:#16213e; border-radius:10px;
+                padding:14px; text-align:center; border:1px solid #333;">
+      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">{{ label }}</div>
+      <div style="font-size:24px; font-weight:bold; color:{{ color }};">{{ pts }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Batting Scoring -->
+<div class="card" style="margin-bottom:20px;" id="batting">
+  <h2 style="color:#f5a623; margin-bottom:16px;">🏏 Batting Points</h2>
+
+  <!-- Basic -->
+  <h4 style="color:#aaa; margin-bottom:10px; font-size:13px; text-transform:uppercase;">Basic</h4>
+  <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+    {% for label, pts in [
+      ('Per Run', c.run),
+      ('Boundary Bonus (4s)', c.four_bonus),
+      ('Six Bonus (6s)', c.six_bonus),
+      ('Duck (batsman/keeper/allrounder)', c.duck),
+    ] %}
+    <tr style="border-bottom:1px solid #1e2a3a;">
+      <td style="padding:10px; color:#ccc; font-size:13px;">{{ label }}</td>
+      <td style="padding:10px; text-align:right; font-weight:bold;
+                 color:{% if pts < 0 %}#ef5350{% else %}#43a047{% endif %}; font-size:14px;">
+        {% if pts > 0 %}+{% endif %}{{ pts }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- Milestones -->
+  <h4 style="color:#aaa; margin-bottom:10px; font-size:13px; text-transform:uppercase;">Run Milestones</h4>
+  <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+    {% for label, pts in [
+      ('25 Runs', c.milestone_25),
+      ('40 Runs', c.milestone_40),
+      ('60 Runs', c.milestone_60),
+      ('80 Runs', c.milestone_80),
+      ('105 Runs', c.milestone_105),
+      ('125 Runs', c.milestone_125),
+    ] %}
+    <tr style="border-bottom:1px solid #1e2a3a;">
+      <td style="padding:10px; color:#ccc; font-size:13px;">{{ label }}</td>
+      <td style="padding:10px; text-align:right; font-weight:bold;
+                 color:#43a047; font-size:14px;">+{{ pts }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <div style="background:#0f1a2e; border-radius:8px; padding:10px;
+              color:#aaa; font-size:12px; margin-bottom:20px;">
+    💡 Milestones are <strong style="color:white;">cumulative</strong> —
+    scoring 80 runs earns the 25, 40, 60 AND 80 run bonuses!
+  </div>
+
+  <!-- Strike Rate -->
+  <h4 style="color:#aaa; margin-bottom:10px; font-size:13px; text-transform:uppercase;">
+    Strike Rate Bonus
+    <span style="color:#555; font-weight:normal; text-transform:none;">
+      (min {{ c.sr_min_balls }} balls or {{ c.sr_min_runs }} runs)
+    </span>
+  </h4>
+  <table style="width:100%; border-collapse:collapse;">
+    {% for label, pts in [
+      ('Below 100', c.sr_below_100),
+      ('100 – 130', c.sr_100_130),
+      ('130 – 160', c.sr_130_160),
+      ('160 – 200', c.sr_160_200),
+      ('Above 200', c.sr_above_200),
+    ] %}
+    <tr style="border-bottom:1px solid #1e2a3a;">
+      <td style="padding:10px; color:#ccc; font-size:13px;">SR {{ label }}</td>
+      <td style="padding:10px; text-align:right; font-weight:bold;
+                 color:{% if pts < 0 %}#ef5350{% elif pts == 0 %}#aaa{% else %}#43a047{% endif %};
+                 font-size:14px;">
+        {% if pts > 0 %}+{% endif %}{{ pts }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<!-- Bowling Scoring -->
+<div class="card" style="margin-bottom:20px;" id="bowling">
+  <h2 style="color:#f5a623; margin-bottom:16px;">🎯 Bowling Points</h2>
+
+  <!-- Basic -->
+  <h4 style="color:#aaa; margin-bottom:10px; font-size:13px; text-transform:uppercase;">Basic</h4>
+  <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+    {% for label, pts in [
+      ('Per Wicket', c.wicket),
+      ('Per Maiden Over', c.maiden),
+      ('Per Dot Ball', c.dot_ball),
+      ('Wide Bowled', c.wide),
+      ('No Ball Bowled', c.no_ball),
+    ] %}
+    <tr style="border-bottom:1px solid #1e2a3a;">
+      <td style="padding:10px; color:#ccc; font-size:13px;">{{ label }}</td>
+      <td style="padding:10px; text-align:right; font-weight:bold;
+                 color:{% if pts < 0 %}#ef5350{% else %}#43a047{% endif %}; font-size:14px;">
+        {% if pts > 0 %}+{% endif %}{{ pts }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- Wicket Milestones -->
+  <h4 style="color:#aaa; margin-bottom:10px; font-size:13px; text-transform:uppercase;">Wicket Milestones</h4>
+  <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+    {% for label, pts in [
+      ('2 Wickets', c.wicket_milestone_2),
+      ('3 Wickets', c.wicket_milestone_3),
+      ('4 Wickets', c.wicket_milestone_4),
+      ('5 Wickets', c.wicket_milestone_5),
+      ('6+ Wickets', c.wicket_milestone_6),
+    ] %}
+    <tr style="border-bottom:1px solid #1e2a3a;">
+      <td style="padding:10px; color:#ccc; font-size:13px;">{{ label }}</td>
+      <td style="padding:10px; text-align:right; font-weight:bold;
+                 color:#43a047; font-size:14px;">+{{ pts }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <!-- Economy -->
+  <h4 style="color:#aaa; margin-bottom:10px; font-size:13px; text-transform:uppercase;">
+    Economy Rate
+    <span style="color:#555; font-weight:normal; text-transform:none;">
+      (min {{ c.economy_min_overs }} overs)
+    </span>
+  </h4>
+  <table style="width:100%; border-collapse:collapse;">
+    {% for label, pts in [
+      ('Below 3.00', c.economy_below_3),
+      ('3.01 – 5.00', c.economy_3_5),
+      ('5.01 – 7.00', c.economy_5_7),
+      ('7.01 – 9.00', c.economy_7_9),
+      ('9.01 – 11.00', c.economy_9_11),
+      ('11.01 – 13.00', c.economy_11_13),
+      ('Above 13.00', c.economy_above_13),
+    ] %}
+    <tr style="border-bottom:1px solid #1e2a3a;">
+      <td style="padding:10px; color:#ccc; font-size:13px;">Economy {{ label }}</td>
+      <td style="padding:10px; text-align:right; font-weight:bold;
+                 color:{% if pts < 0 %}#ef5350{% elif pts == 0 %}#aaa{% else %}#43a047{% endif %};
+                 font-size:14px;">
+        {% if pts > 0 %}+{% endif %}{{ pts }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<!-- Fielding -->
+<div class="card" style="margin-bottom:20px;" id="fielding">
+  <h2 style="color:#f5a623; margin-bottom:16px;">🧤 Fielding Points</h2>
+  <table style="width:100%; border-collapse:collapse;">
+    {% for label, pts in [
+      ('Catch', c.catch),
+      ('Stumping', c.stumping),
+      ('Run Out', c.run_out),
+    ] %}
+    <tr style="border-bottom:1px solid #1e2a3a;">
+      <td style="padding:10px; color:#ccc; font-size:13px;">{{ label }}</td>
+      <td style="padding:10px; text-align:right; font-weight:bold;
+                 color:#43a047; font-size:14px;">+{{ pts }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<!-- Tips -->
+<div class="card" style="margin-bottom:40px; background:linear-gradient(135deg,#0f3460,#16213e);
+                          border:1px solid #f5a623;">
+  <h2 style="color:#f5a623; margin-bottom:16px;">💡 Pro Tips</h2>
+  <ul style="color:#ccc; font-size:14px; line-height:2; padding-left:20px;">
+    <li>All-rounders are gold — they earn points from both batting AND bowling.</li>
+    <li>Captain choice is crucial — a big knock by your captain can swing the leaderboard.</li>
+    <li>Watch the match schedule — use the "Next Match" filter in team selection
+        to see who's playing next.</li>
+    <li>Keep an eye on overseas slots — you can pick max {{ c.max_overseas }}
+        overseas players but they're often the highest impact.</li>
+    <li>Transfer smartly — you only have {{ c.season_transfers }} transfers for
+        the whole season. Don't waste them early!</li>
+    <li>Economy matters for bowlers — a bowler with great economy earns bonus
+        points even without wickets.</li>
+  </ul>
+</div>
+
+{% endblock %}

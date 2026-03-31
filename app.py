@@ -225,82 +225,133 @@ def select_team():
                            rules=rules)
 
 @app.route("/save-team", methods=["POST"])
+@app.route("/save-team", methods=["POST"])
 def save_team():
     if "user_id" not in session:
         return jsonify({"success": False, "message": "Not logged in"})
 
     data = request.get_json()
     user = User.query.get(session["user_id"])
-    new_ids = set(data["player_ids"])
+    new_ids = set(int(x) for x in data["player_ids"])
 
     # Get current team
     old_team = UserTeam.query.filter_by(user_id=user.id).first()
-    old_ids = set(int(x) for x in old_team.player_ids.split(",") if x.strip()) if old_team else set()
-
-    # First time selection — no transfers deducted
+    old_ids = set(
+        int(x) for x in old_team.player_ids.split(",") if x.strip()
+    ) if old_team else set()
     is_first_selection = old_team is None
 
-    # Check if any match has started yet
-    any_match_started = Match.query.filter(
+    # ── Determine current window ───────────────────────────────
+    last_match = Match.query.filter(
         Match.status.in_(["live", "completed"])
-    ).first()
+    ).order_by(Match.match_date.desc()).first()
+    window_match_id = last_match.id if last_match else 0
 
-    # Pre-season or first selection — save freely, no transfers deducted
-    if is_first_selection or not any_match_started:
+    # Get or create window for current match
+    current_window = TransferWindow.query.filter_by(
+        user_id=user.id,
+        window_start_match=window_match_id
+    ).first()
+    if not current_window:
+        team = old_team
+        baseline = team.player_ids if (team and team.player_ids) else \
+                   ",".join(str(x) for x in data["player_ids"])
+        current_window = TransferWindow(
+            user_id=user.id,
+            window_start_match=window_match_id,
+            baseline_player_ids=baseline,
+            transfers_used=0
+        )
+        db.session.add(current_window)
+        db.session.flush()  # get the id without committing
+
+    # ── Record first window for this user ──────────────────────
+    if user.first_transfer_window_id is None:
+        user.first_transfer_window_id = current_window.id
+
+    # ── Free period = still in their very first window ─────────
+    in_free_period = (current_window.id == user.first_transfer_window_id)
+
+    new_player_ids_str = ",".join(str(x) for x in data["player_ids"])
+
+    if is_first_selection or in_free_period:
+        # Save team freely
         if old_team:
-            old_team.player_ids = ",".join(str(x) for x in data["player_ids"])
+            old_team.player_ids = new_player_ids_str
             old_team.captain_id = data["captain_id"]
             old_team.vice_captain_id = data["vice_captain_id"]
             old_team.last_updated = utcnow()
         else:
             new_team = UserTeam(
                 user_id=user.id,
-                player_ids=",".join(str(x) for x in data["player_ids"]),
+                player_ids=new_player_ids_str,
                 captain_id=data["captain_id"],
                 vice_captain_id=data["vice_captain_id"]
             )
             db.session.add(new_team)
+
+        # Keep baseline in sync with latest free save
+        current_window.baseline_player_ids = new_player_ids_str
+        current_window.transfers_used = 0
+
         db.session.commit()
         return jsonify({
             "success": True,
             "transfers_remaining": user.transfers_remaining,
-            "window_transfers_used": 0
+            "window_transfers_used": 0,
+            "message": "Free period — no transfers used"
         })
 
-    # Season has started — enforce transfer limits
-    current_window = get_or_create_transfer_window(user.id)
-    baseline_ids = set(int(x) for x in current_window.baseline_player_ids.split(",") if x.strip())
+    # ── Paid window: enforce transfer limits ───────────────────
+    baseline_ids = set(
+        int(x) for x in current_window.baseline_player_ids.split(",")
+        if x.strip()
+    )
 
-    # Calculate NET transfers in this window
     net_transfers = len(new_ids - baseline_ids)
-    previous_net = len(old_ids - baseline_ids)
-    additional_transfers = max(0, net_transfers - previous_net)
+    previous_net  = len(old_ids - baseline_ids)
+    delta         = net_transfers - previous_net
+
+    additional_transfers = max(0, delta)
+    refund               = max(0, -delta)
+
+    print(f"DEBUG window={current_window.id} first_window={user.first_transfer_window_id} "
+          f"net={net_transfers} prev={previous_net} delta={delta} "
+          f"additional={additional_transfers} refund={refund}")
 
     if additional_transfers > user.transfers_remaining:
         return jsonify({
             "success": False,
-            "message": f"Not enough transfers! You need {additional_transfers} more but only have {user.transfers_remaining} remaining."
+            "message": f"Not enough transfers! Need {additional_transfers} "
+                       f"but only {user.transfers_remaining} remaining."
         })
 
-    # Log individual transfers
-    players_in = new_ids - old_ids
-    players_out = old_ids - new_ids
-    for player_in_id, player_out_id in zip(sorted(players_in), sorted(players_out)):
-        history = TransferHistory(
-            user_id=user.id,
-            window_match_id=current_window.window_start_match,
-            player_in_id=player_in_id,
-            player_out_id=player_out_id,    
-            transferred_at=utcnow()
-        )
-        db.session.add(history)
+    # ── Log transfers ─────────────────────────────────────────
+    if delta > 0:
+        newly_added   = (new_ids - baseline_ids) - (old_ids - baseline_ids)
+        newly_removed = (old_ids - baseline_ids) - (new_ids - baseline_ids)
+        for player_in_id, player_out_id in zip(
+            sorted(newly_added), sorted(newly_removed)
+        ):
+            db.session.add(TransferHistory(
+                user_id=user.id,
+                window_match_id=current_window.window_start_match,
+                player_in_id=player_in_id,
+                player_out_id=player_out_id,
+                transferred_at=utcnow()
+            ))
 
-# Deduct transfers
+    # ── Apply ─────────────────────────────────────────────────
     user.transfers_remaining -= additional_transfers
-    current_window.transfers_used = net_transfers
+    user.transfers_remaining += refund
+    from scoring_config import SCORING_CONFIG
+    user.transfers_remaining = min(
+        user.transfers_remaining,
+        SCORING_CONFIG["season_transfers"]
+    )
+    current_window.transfers_used = current_window.transfers_used + delta
 
-    # Save team
-    old_team.player_ids = ",".join(str(x) for x in data["player_ids"])
+    old_team.player_ids = new_player_ids_str
     old_team.captain_id = data["captain_id"]
     old_team.vice_captain_id = data["vice_captain_id"]
     old_team.last_updated = utcnow()
@@ -309,7 +360,7 @@ def save_team():
     return jsonify({
         "success": True,
         "transfers_remaining": user.transfers_remaining,
-        "window_transfers_used": net_transfers
+        "window_transfers_used": current_window.transfers_used
     })
 
 def get_or_create_transfer_window(user_id):
@@ -326,7 +377,13 @@ def get_or_create_transfer_window(user_id):
 
     if not window:
         team = UserTeam.query.filter_by(user_id=user_id).first()
-        baseline = team.player_ids if team else ""
+        baseline = team.player_ids if (team and team.player_ids) else ""
+
+        # Safety check — baseline must have 11 players
+        baseline_ids = [x for x in baseline.split(",") if x.strip()]
+        if len(baseline_ids) != 11:
+            print(f"⚠️ Warning: baseline has {len(baseline_ids)} players for user {user_id}")
+
         window = TransferWindow(
             user_id=user_id,
             window_start_match=window_match_id,
@@ -335,6 +392,18 @@ def get_or_create_transfer_window(user_id):
         )
         db.session.add(window)
         db.session.commit()
+        print(f"✅ New transfer window created for user {user_id} "
+              f"with {len(baseline_ids)} baseline players")
+    else:
+        # Fix corrupted baseline if found
+        baseline_ids = [x for x in window.baseline_player_ids.split(",") if x.strip()]
+        if len(baseline_ids) == 0:
+            team = UserTeam.query.filter_by(user_id=user_id).first()
+            if team and team.player_ids:
+                window.baseline_player_ids = team.player_ids
+                window.transfers_used = 0
+                db.session.commit()
+                print(f"🔧 Fixed empty baseline for user {user_id}")
 
     return window
 
@@ -1171,6 +1240,11 @@ def admin_scoring():
         return redirect(url_for("admin_scoring"))
 
     return render_template("admin_scoring.html", config=SCORING_CONFIG)
+
+@app.route("/rules")
+def rules():
+    from scoring_config import SCORING_CONFIG as c
+    return render_template("rules.html", c=c)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

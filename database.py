@@ -16,6 +16,7 @@ class User(db.Model):
     total_points = db.Column(db.Float, default=0)
     is_admin = db.Column(db.Boolean, default=False)
     joined_at = db.Column(db.DateTime, default=utcnow)
+    first_transfer_window_id = db.Column(db.Integer, nullable=True)
 
 class Player(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -39,7 +40,7 @@ class Match(db.Model):
 class UserTeam(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
-    player_ids = db.Column(db.String(200), nullable=False)  # comma separated 11 player ids
+    player_ids = db.Column(db.String(500), nullable=False)  # comma separated 11 player ids
     captain_id = db.Column(db.Integer, nullable=False)
     vice_captain_id = db.Column(db.Integer, nullable=False)
     last_updated = db.Column(db.DateTime, default=utcnow)
@@ -51,7 +52,7 @@ class UserMatchTeam(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     match_id = db.Column(db.Integer, db.ForeignKey("match.id"), nullable=False)
-    player_ids = db.Column(db.String(200), nullable=False)
+    player_ids = db.Column(db.String(500), nullable=False)
     captain_id = db.Column(db.Integer, nullable=False)
     vice_captain_id = db.Column(db.Integer, nullable=False)
     points_scored = db.Column(db.Float, default=0)
@@ -96,7 +97,7 @@ class TransferWindow(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     window_start_match = db.Column(db.Integer, db.ForeignKey("match.id"), nullable=False)
-    baseline_player_ids = db.Column(db.String(200), nullable=False)  # team at window start
+    baseline_player_ids = db.Column(db.String(500), nullable=False)  # team at window start
     transfers_used = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=utcnow)
     
