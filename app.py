@@ -619,7 +619,6 @@ def player_stats():
 
     players = Player.query.filter_by(is_active=True).order_by(Player.ipl_team).all()
 
-    # Get current user's team
     user_team = UserTeam.query.filter_by(user_id=session["user_id"]).first()
     my_player_ids = set()
     if user_team:
@@ -633,7 +632,6 @@ def player_stats():
         total_points = sum(s.points_earned for s in stats)
         matches_played = len([s for s in stats if s.did_play])
 
-        # Build match breakdown
         match_breakdown = []
         for s in stats:
             if not s.did_play:
@@ -642,67 +640,82 @@ def player_stats():
             if not match:
                 continue
 
-            # Playing bonus
+            # ── Playing & Match Bonus ──────────────────────────
             playing_pts = c["playing_bonus"]
-
-            # Winning points
             winning_pts = c["winning_team"] if s.is_winner else 0
+            mom_pts     = c["motm"] if s.is_motm else 0
 
-            # MoM points
-            mom_pts = c["motm"] if s.is_motm else 0
+            # ── Batting ────────────────────────────────────────
+            runs_pts   = s.runs * c["run"]
+            fours_pts  = s.fours * c["four_bonus"]
+            sixes_pts  = s.sixes * c["six_bonus"]
+            duck_pts   = c["duck"] if (s.runs == 0 and
+                         player.role in ["batsman", "keeper", "allrounder"]) else 0
 
-            # Batting points
-            runs_pts = s.runs * c["run"]
-            fours_pts = s.fours * c["four_bonus"]
-            sixes_pts = s.sixes * c["six_bonus"]
+            # Batting milestones
             milestone_pts = 0
-            if s.runs >= 100: milestone_pts = c["century"]
-            elif s.runs >= 75: milestone_pts = c["seventy_five"]
-            elif s.runs >= 50: milestone_pts = c["half_century"]
-            elif s.runs >= 25: milestone_pts = c["twenty_five"]
-            duck_pts = c["duck"] if s.runs == 0 and player.role in ["batsman", "keeper", "allrounder"] else 0
+            if s.runs >= 125:   milestone_pts = c["milestone_125"]
+            elif s.runs >= 105: milestone_pts = c["milestone_105"]
+            elif s.runs >= 80:  milestone_pts = c["milestone_80"]
+            elif s.runs >= 60:  milestone_pts = c["milestone_60"]
+            elif s.runs >= 40:  milestone_pts = c["milestone_40"]
+            elif s.runs >= 25:  milestone_pts = c["milestone_25"]
 
-            # Strike rate points
+            # Strike rate
             sr_pts = 0
             sr = None
-            if s.balls_faced >= c["sr_min_balls"] and player.role in c["sr_applicable_roles"]:
+            qualifies = (s.balls_faced >= c["sr_min_balls"] or
+                         s.runs >= c["sr_min_runs"])
+            if qualifies and s.balls_faced > 0 and \
+               player.role in c["sr_applicable_roles"]:
                 sr = round((s.runs / s.balls_faced) * 100, 1)
-                if sr > 170: sr_pts = c["sr_above_170"]
-                elif sr >= 150: sr_pts = c["sr_150_170"]
-                elif sr >= 130: sr_pts = c["sr_130_150"]
-                elif 60 <= sr < 70: sr_pts = c["sr_60_70"]
-                elif 50 <= sr < 60: sr_pts = c["sr_50_60"]
-                elif sr < 50: sr_pts = c["sr_below_50"]
+                if sr > 200:   sr_pts = c["sr_above_200"]
+                elif sr > 160: sr_pts = c["sr_160_200"]
+                elif sr > 130: sr_pts = c["sr_130_160"]
+                elif sr > 100: sr_pts = c["sr_100_130"]
+                else:          sr_pts = c["sr_below_100"]
 
-            batting_pts = runs_pts + fours_pts + sixes_pts + milestone_pts + duck_pts + sr_pts
+            batting_pts = runs_pts + fours_pts + sixes_pts + \
+                          milestone_pts + duck_pts + sr_pts
 
-            # Bowling points
+            # ── Bowling ────────────────────────────────────────
             wickets_pts = s.wickets * c["wicket"]
             maidens_pts = s.maidens * c["maiden"]
-            bowling_milestone_pts = 0
-            if s.wickets >= 5: bowling_milestone_pts = c["five_wickets"]
-            elif s.wickets >= 4: bowling_milestone_pts = c["four_wickets"]
-            elif s.wickets >= 3: bowling_milestone_pts = c["three_wickets"]
+            dot_pts     = getattr(s, 'dot_balls', 0) * c["dot_ball"]
+            wides_pts   = getattr(s, 'wides', 0) * c["wide"]
+            nb_pts      = getattr(s, 'no_balls', 0) * c["no_ball"]
 
-            # Economy points
+            # Bowling milestones
+            bowling_milestone_pts = 0
+            if s.wickets >= 6:   bowling_milestone_pts = c["wicket_milestone_6"]
+            elif s.wickets >= 5: bowling_milestone_pts = c["wicket_milestone_5"]
+            elif s.wickets >= 4: bowling_milestone_pts = c["wicket_milestone_4"]
+            elif s.wickets >= 3: bowling_milestone_pts = c["wicket_milestone_3"]
+            elif s.wickets >= 2: bowling_milestone_pts = c["wicket_milestone_2"]
+
+            # Economy
             economy_pts = 0
             economy = None
-            if s.overs_bowled >= c["economy_min_overs"] and player.role in c["economy_applicable_roles"]:
+            if s.overs_bowled >= c["economy_min_overs"] and \
+               player.role in c["economy_applicable_roles"]:
                 economy = round(s.runs_conceded / s.overs_bowled, 1)
-                if economy < 5: economy_pts = c["economy_below_5"]
-                elif economy < 6: economy_pts = c["economy_5_6"]
-                elif economy < 7: economy_pts = c["economy_6_7"]
-                elif 10 <= economy < 11: economy_pts = c["economy_10_11"]
-                elif 11 <= economy < 12: economy_pts = c["economy_11_12"]
-                elif economy >= 12: economy_pts = c["economy_above_12"]
+                if economy <= 3:    economy_pts = c["economy_below_3"]
+                elif economy <= 5:  economy_pts = c["economy_3_5"]
+                elif economy <= 7:  economy_pts = c["economy_5_7"]
+                elif economy <= 9:  economy_pts = c["economy_7_9"]
+                elif economy <= 11: economy_pts = c["economy_9_11"]
+                elif economy <= 13: economy_pts = c["economy_11_13"]
+                else:               economy_pts = c["economy_above_13"]
 
-            bowling_pts = wickets_pts + maidens_pts + bowling_milestone_pts + economy_pts
+            bowling_pts = (wickets_pts + maidens_pts + dot_pts +
+                           wides_pts + nb_pts +
+                           bowling_milestone_pts + economy_pts)
 
-            # Fielding points
-            catches_pts = s.catches * c["catch"]
-            runouts_pts = s.run_outs * c["run_out"]
+            # ── Fielding ───────────────────────────────────────
+            catches_pts   = s.catches * c["catch"]
             stumpings_pts = s.stumpings * c["stumping"]
-            fielding_pts = catches_pts + runouts_pts + stumpings_pts
+            runouts_pts   = s.run_outs * c["run_out"]
+            fielding_pts  = catches_pts + stumpings_pts + runouts_pts
 
             match_breakdown.append({
                 "match": match,
@@ -714,9 +727,12 @@ def player_stats():
                 # Batting
                 "batting_pts": round(batting_pts, 1),
                 "runs": s.runs,
-                "runs_pts": runs_pts,
+                "balls_faced": s.balls_faced,
                 "fours": s.fours,
                 "sixes": s.sixes,
+                "runs_pts": runs_pts,
+                "fours_pts": fours_pts,
+                "sixes_pts": sixes_pts,
                 "milestone_pts": milestone_pts,
                 "duck_pts": duck_pts,
                 "sr": sr,
@@ -727,6 +743,12 @@ def player_stats():
                 "wickets_pts": wickets_pts,
                 "maidens": s.maidens,
                 "maidens_pts": maidens_pts,
+                "dot_balls": getattr(s, 'dot_balls', 0),
+                "dot_pts": dot_pts,
+                "wides": getattr(s, 'wides', 0),
+                "wides_pts": wides_pts,
+                "no_balls": getattr(s, 'no_balls', 0),
+                "nb_pts": nb_pts,
                 "bowling_milestone_pts": bowling_milestone_pts,
                 "economy": economy,
                 "economy_pts": economy_pts,
@@ -734,13 +756,12 @@ def player_stats():
                 "fielding_pts": round(fielding_pts, 1),
                 "catches": s.catches,
                 "catches_pts": catches_pts,
-                "run_outs": s.run_outs,
-                "runouts_pts": runouts_pts,
                 "stumpings": s.stumpings,
                 "stumpings_pts": stumpings_pts,
+                "run_outs": s.run_outs,
+                "runouts_pts": runouts_pts,
             })
 
-        # Sort by match date descending
         match_breakdown.sort(key=lambda x: x["match"].match_date, reverse=True)
 
         player_data.append({
