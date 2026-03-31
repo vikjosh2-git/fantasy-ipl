@@ -148,6 +148,7 @@
                     padding:6px 0; border-bottom:1px solid #222; font-size:13px;">
           <div>
             {{ player.name }}
+            {% if player.is_foreigner %}🌍{% endif %}
             {% if player.id == m.user_captain_id %}
               <span style="background:#f5a623; color:#1a1a2e; padding:1px 5px;
                            border-radius:8px; font-size:10px; margin-left:4px;">C</span>
@@ -183,6 +184,7 @@
                     padding:6px 0; border-bottom:1px solid #222; font-size:13px;">
           <div>
             {{ player.name }}
+            {% if player.is_foreigner %}🌍{% endif %}
             {% if player.id == m.opponent_captain_id %}
               <span style="background:#f5a623; color:#1a1a2e; padding:1px 5px;
                            border-radius:8px; font-size:10px; margin-left:4px;">C</span>

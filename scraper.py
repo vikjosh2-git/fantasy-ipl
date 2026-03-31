@@ -129,6 +129,8 @@ def parse_cricapi_scorecard(match_data):
                 p["wickets"] += int(bowler.get("w", 0) or 0)
                 p["maidens"] += int(bowler.get("m", 0) or 0)
                 p["runs_conceded"] += int(bowler.get("r", 0) or 0)
+                p["wides"] += int(bowler.get("wd", 0) or 0)
+                p["no_balls"] += int(bowler.get("nb", 0) or 0)
 
                 # Parse overs e.g. "4.0" or "3.2"
                 overs_str = str(bowler.get("o", "0") or "0")
@@ -189,6 +191,7 @@ def empty_stats():
     return {
         "runs": 0, "balls_faced": 0, "fours": 0, "sixes": 0,
         "wickets": 0, "overs_bowled": 0.0, "runs_conceded": 0,
-        "maidens": 0, "catches": 0, "stumpings": 0, "run_outs": 0,
+        "maidens": 0, "wides": 0, "no_balls": 0,
+        "catches": 0, "stumpings": 0, "run_outs": 0,
         "is_motm": 0, "is_winner": 0, "did_play": 0, "team": ""
     }

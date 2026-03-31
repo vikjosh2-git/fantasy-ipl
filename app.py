@@ -156,12 +156,11 @@ def dashboard():
                            next_match_utc_timestamp=next_match_utc_timestamp)
 
 # ─── Team Selection ───────────────────────────────────────────
-
 @app.route("/select-team")
 def select_team():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    players = Player.query.filter_by(is_active=True).order_by(Player.ipl_team, Player.role).all()
+    players = Player.query.filter_by(is_active=True).all()
     user = User.query.get(session["user_id"])
     existing_team = UserTeam.query.filter_by(user_id=user.id).first()
     selected_ids = []
@@ -172,7 +171,6 @@ def select_team():
         captain_id = existing_team.captain_id
         vc_id = existing_team.vice_captain_id
 
-#    live_match = Match.query.filter_by(status="live").first()
     any_match_started = Match.query.filter(
         Match.status.in_(["live", "completed"])
     ).first()
@@ -181,49 +179,50 @@ def select_team():
     if next_match:
         next_match_teams = [next_match.team1, next_match.team2]
 
-    # Get season points per player for points range filter
+# Get season points per player
     from database import PlayerMatchStats
     player_points = {}
     for player in players:
         stats = PlayerMatchStats.query.filter_by(player_id=player.id).all()
         player_points[player.id] = round(sum(s.points_earned for s in stats), 1)
 
+    # sSort players:
+    # Role order: batsman first, bowler second, allrounder third, keeper last
+    # Within role: selected first, then highest points, then highest credits
+    role_order = {"batsman": 0, "bowler": 1, "allrounder": 2, "keeper": 3}
+    selected_set = set(selected_ids)
+
+    players.sort(key=lambda p: (
+        role_order.get(p.role, 99),           # Role group
+        0 if p.id in selected_set else 1,     # Selected first
+        -player_points.get(p.id, 0),          # Highest points first
+        -p.credits                             # Highest credits first
+    ))
+
+    # Team formation rules
+    from scoring_config import SCORING_CONFIG
+    rules = {
+        "team_size": SCORING_CONFIG["team_size"],
+        "max_overseas": SCORING_CONFIG["max_overseas"],
+        "min_batsmen": SCORING_CONFIG["min_batsmen"],
+        "max_batsmen": SCORING_CONFIG["max_batsmen"],
+        "min_bowlers": SCORING_CONFIG["min_bowlers"],
+        "max_bowlers": SCORING_CONFIG["max_bowlers"],
+        "min_allrounders": SCORING_CONFIG["min_allrounders"],
+        "max_allrounders": SCORING_CONFIG["max_allrounders"],
+        "min_keepers": SCORING_CONFIG["min_keepers"],
+        "max_keepers": SCORING_CONFIG["max_keepers"],
+        "max_players_per_team": SCORING_CONFIG["max_players_per_team"],
+    }
+
     return render_template("team_select.html", players=players,
                            user=user, selected_ids=selected_ids,
                            captain_id=captain_id, vc_id=vc_id,
- #                          live_match=live_match,
                            any_match_started=any_match_started,
                            next_match=next_match,
                            next_match_teams=next_match_teams,
-                           player_points=player_points)
-
-
-def get_or_create_transfer_window(user_id):
-    from database import TransferWindow
-    # Window opens when a match goes live or completed
-    last_match = Match.query.filter(
-        Match.status.in_(["live", "completed"])
-    ).order_by(Match.match_date.desc()).first()
-    window_match_id = last_match.id if last_match else 0
-
-    window = TransferWindow.query.filter_by(
-        user_id=user_id,
-        window_start_match=window_match_id
-    ).first()
-
-    if not window:
-        team = UserTeam.query.filter_by(user_id=user_id).first()
-        baseline = team.player_ids if team else ""
-        window = TransferWindow(
-            user_id=user_id,
-            window_start_match=window_match_id,
-            baseline_player_ids=baseline,
-            transfers_used=0
-        )
-        db.session.add(window)
-        db.session.commit()
-
-    return window
+                           player_points=player_points,
+                           rules=rules)
 
 @app.route("/save-team", methods=["POST"])
 def save_team():
@@ -291,14 +290,53 @@ def save_team():
             user_id=user.id,
             window_match_id=current_window.window_start_match,
             player_in_id=player_in_id,
-            player_out_id=player_out_id,
+            player_out_id=player_out_id,    
             transferred_at=utcnow()
         )
         db.session.add(history)
 
-    # Deduct transfers
+# Deduct transfers
     user.transfers_remaining -= additional_transfers
     current_window.transfers_used = net_transfers
+
+    # Save team
+    old_team.player_ids = ",".join(str(x) for x in data["player_ids"])
+    old_team.captain_id = data["captain_id"]
+    old_team.vice_captain_id = data["vice_captain_id"]
+    old_team.last_updated = utcnow()
+
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "transfers_remaining": user.transfers_remaining,
+        "window_transfers_used": net_transfers
+    })
+
+def get_or_create_transfer_window(user_id):
+    from database import TransferWindow
+    last_match = Match.query.filter(
+        Match.status.in_(["live", "completed"])
+    ).order_by(Match.match_date.desc()).first()
+    window_match_id = last_match.id if last_match else 0
+
+    window = TransferWindow.query.filter_by(
+        user_id=user_id,
+        window_start_match=window_match_id
+    ).first()
+
+    if not window:
+        team = UserTeam.query.filter_by(user_id=user_id).first()
+        baseline = team.player_ids if team else ""
+        window = TransferWindow(
+            user_id=user_id,
+            window_start_match=window_match_id,
+            baseline_player_ids=baseline,
+            transfers_used=0
+        )
+        db.session.add(window)
+        db.session.commit()
+
+    return window
 
     # Save team
     old_team.player_ids = ",".join(str(x) for x in data["player_ids"])
@@ -872,6 +910,9 @@ def upload_csv():
             "overs_bowled": float(row.get("overs_bowled", 0) or 0),
             "runs_conceded": int(row.get("runs_conceded", 0) or 0),
             "maidens": int(row.get("maidens", 0) or 0),
+            "wides": int(request.form.get(f"wides_{player.id}", 0)),
+            "no_balls": int(request.form.get(f"no_balls_{player.id}", 0)),
+            "dot_balls": int(request.form.get(f"dot_balls_{player.id}", 0)),
             "catches": int(row.get("catches", 0) or 0),
             "stumpings": int(row.get("stumpings", 0) or 0),
             "run_outs": int(row.get("run_outs", 0) or 0),
@@ -1021,6 +1062,9 @@ def scrape_confirm():
             "overs_bowled": float(row.get("overs_bowled", 0) or 0),
             "runs_conceded": int(row.get("runs_conceded", 0) or 0),
             "maidens": int(row.get("maidens", 0) or 0),
+            "wides": int(row.get("wides", 0)),
+            "no_balls": int(row.get("no_balls", 0)),
+            "dot_balls": int(row.get("dot_balls", 0)),
             "catches": int(row.get("catches", 0) or 0),
             "stumpings": int(row.get("stumpings", 0) or 0),
             "run_outs": int(row.get("run_outs", 0) or 0),
@@ -1069,6 +1113,43 @@ def toggle_admin(user_id):
     status = "granted" if user.is_admin else "revoked"
     flash(f"Admin access {status} for {user.username}!", "success")
     return redirect(url_for("admin_users"))
+
+@app.route("/admin/scoring", methods=["GET", "POST"])
+@admin_required
+def admin_scoring():
+    from scoring_config import SCORING_CONFIG
+    import json, os
+
+    if request.method == "POST":
+        new_config = {}
+        for key, value in SCORING_CONFIG.items():
+            if isinstance(value, list):
+                # Handle list values like sr_applicable_roles
+                new_config[key] = value
+            elif isinstance(value, bool):
+                new_config[key] = request.form.get(key) == "on"
+            elif isinstance(value, int):
+                new_config[key] = int(request.form.get(key, value))
+            elif isinstance(value, float):
+                new_config[key] = float(request.form.get(key, value))
+            else:
+                new_config[key] = request.form.get(key, value)
+
+        # Write back to scoring_config.py
+        config_path = os.path.join(os.path.dirname(__file__), "scoring_config.py")
+        with open(config_path, "w") as f:
+            f.write("# ─────────────────────────────────────────────────────────────\n")
+            f.write("# Fantasy IPL — Scoring Configuration\n")
+            f.write("# Configurable via Admin UI\n")
+            f.write("# ─────────────────────────────────────────────────────────────\n\n")
+            f.write("SCORING_CONFIG = ")
+            f.write(json.dumps(new_config, indent=4))
+            f.write("\n")
+
+        flash("✅ Scoring rules updated successfully!", "success")
+        return redirect(url_for("admin_scoring"))
+
+    return render_template("admin_scoring.html", config=SCORING_CONFIG)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

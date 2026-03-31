@@ -7,7 +7,11 @@
   <a href="/admin/users" class="btn btn-info" style="padding:8px 20px;">
     👥 Manage Users
   </a>
+  <a href="/admin/scoring" class="btn btn-info" style="margin-bottom:16px; display:inline-block;">
+  ⚙️ Edit Scoring Rules
+  </a>
 </div>
+
 
 <!-- Workflow 0: Scrape from CricAPI -->
 <div class="card" style="margin-bottom:24px;">
@@ -54,54 +58,6 @@
   </div>
 </div>
 
-
-<!-- Workflow 1: Upload CSV for Live Match -->
-<div class="card" style="margin-bottom:24px;">
-  <h2 style="color:#f5a623; margin-bottom:16px;">📤 Upload Match Scorecard (CSV)</h2>
-  <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
-    Select a live match, upload the CSV scorecard and the system will calculate
-    points and mark the match as completed.
-  </p>
-
-  <form method="POST" action="/admin/upload-csv" enctype="multipart/form-data">
-    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
-      <div style="flex:1; min-width:200px;">
-        <label style="color:#aaa; font-size:13px;">Select Live Match</label>
-        <select name="match_id" required
-                style="width:100%; margin-top:6px;">
-          <option value="">-- Select Match --</option>
-          {% for match in live_matches %}
-          <option value="{{ match.id }}">
-            Match {{ match.match_number }}: {{ match.team1 }} vs {{ match.team2 }}
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-      <div style="flex:1; min-width:200px;">
-        <label style="color:#aaa; font-size:13px;">Upload CSV File</label>
-        <input type="file" name="csv_file" accept=".csv" required
-               style="margin-top:6px; background:#0f3460; padding:8px;">
-      </div>
-      <div>
-        <button type="submit" class="btn btn-success">
-          📤 Upload & Calculate Points
-        </button>
-      </div>
-    </div>
-  </form>
-
-  <!-- CSV Format Guide -->
-  <div style="margin-top:16px; background:#0f3460; border-radius:8px; padding:12px;">
-    <div style="color:#f5a623; font-size:13px; font-weight:bold; margin-bottom:8px;">
-      📋 CSV Format
-    </div>
-    <code style="color:#aaa; font-size:12px; line-height:1.8;">
-      player_name, runs, balls_faced, fours, sixes, wickets, overs_bowled,
-      runs_conceded, maidens, catches, stumpings, run_outs, is_motm, is_winner, did_play
-    </code>
-  </div>
-</div>
-
 <!-- Workflow 2: Correct Scores for Completed Match -->
 <div class="card" style="margin-bottom:24px;">
   <h2 style="color:#f5a623; margin-bottom:16px;">✏️ Correct Match Scores</h2>
@@ -123,30 +79,5 @@
       </select>
     </div>
   </div>
-</div>
-
-<!-- All Matches Overview -->
-<h2 style="color:#f5a623; margin-bottom:16px;">📅 All Matches</h2>
-<div style="display:flex; flex-wrap:wrap; gap:16px;">
-  {% for match in all_matches %}
-  <div class="card" style="width:280px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-      <span style="color:#aaa; font-size:13px;">Match {{ match.match_number }}</span>
-      <span class="badge badge-{{ match.status }}">{{ match.status.upper() }}</span>
-    </div>
-    <div style="font-size:15px; font-weight:bold; text-align:center; margin-bottom:10px;">
-      {{ match.team1 }}<br>
-      <span style="color:#aaa; font-size:13px;">vs</span><br>
-      {{ match.team2 }}
-    </div>
-    <div style="color:#aaa; font-size:12px; text-align:center;">
-      📅 {{ match.match_date.strftime('%b %d, %Y') }}
-    </div>
-    <a href="/admin/match/{{ match.id }}"
-       class="btn btn-primary" style="display:block; text-align:center; margin-top:12px;">
-      Enter/Edit Stats
-    </a>
-  </div>
-  {% endfor %}
 </div>
 {% endblock %}

@@ -59,6 +59,7 @@
           <td style="padding:10px;">
             <span style="color:#43a047; font-weight:bold;">
               ✅ {{ t.player_in.name }}
+              {% if t.player_in.is_foreigner %}🌍{% endif %}
             </span>
             <div style="color:#aaa; font-size:11px;">{{ t.player_in.ipl_team }}</div>
           </td>
@@ -66,6 +67,7 @@
           <td style="padding:10px;">
             <span style="color:#ef5350; font-weight:bold;">
               ❌ {{ t.player_out.name }}
+              {% if t.player_out.is_foreigner %}🌍{% endif %}
             </span>
             <div style="color:#aaa; font-size:11px;">{{ t.player_out.ipl_team }}</div>
           </td>

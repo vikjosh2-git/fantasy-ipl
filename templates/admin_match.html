@@ -55,6 +55,9 @@
             <th style="padding:10px;">Overs</th>
             <th style="padding:10px;">Runs Con.</th>
             <th style="padding:10px;">Maidens</th>
+            <th style="padding:10px;">Wides</th>
+            <th style="padding:10px;">NB</th>
+            <th style="padding:10px;">Dots</th>
             <th style="padding:10px;">Catches</th>
             <th style="padding:10px;">Stump</th>
             <th style="padding:10px;">R.Out</th>
@@ -73,7 +76,12 @@
               <input type="checkbox" name="did_play_{{ player.id }}"
                     {% if stat and stat.did_play %}checked{% endif %}>
             </td>
-            <td style="padding:10px; font-weight:bold; font-size:13px;">{{ player.name }}</td>
+            <td style="padding:10px; font-weight:bold; font-size:13px;">
+              {{ player.name }}
+              {% if player.is_foreigner %}
+              <span style="font-size:10px;" title="Overseas">🌍</span>
+              {% endif %}
+            </td>   
             <td style="padding:10px; color:#aaa; font-size:12px;">{{ player.role }}</td>
             <td style="padding:10px;">
               <input type="number" name="runs_{{ player.id }}" min="0"
@@ -114,6 +122,21 @@
               <input type="number" name="maidens_{{ player.id }}" min="0"
                      value="{{ stat.maidens if stat else 0 }}"
                      style="width:60px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="wides_{{ player.id }}" min="0"
+                     value="{{ stat.wides if stat else 0 }}"
+                     style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="no_balls_{{ player.id }}" min="0"
+                     value="{{ stat.no_balls if stat else 0 }}"
+                     style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="dot_balls_{{ player.id }}" min="0"
+                     value="{{ stat.dot_balls if stat else 0 }}"
+                     style="width:50px; padding:6px; text-align:center;">
             </td>
             <td style="padding:10px;">
               <input type="number" name="catches_{{ player.id }}" min="0"
@@ -182,7 +205,12 @@
               <input type="checkbox" name="did_play_{{ player.id }}"
                     {% if stat and stat.did_play %}checked{% endif %}>
             </td>
-            <td style="padding:10px; font-weight:bold; font-size:13px;">{{ player.name }}</td>
+            <td style="padding:10px; font-weight:bold; font-size:13px;">
+              {{ player.name }}
+              {% if player.is_foreigner %}
+              <span style="font-size:10px;" title="Overseas">🌍</span>
+              {% endif %}
+            </td>
             <td style="padding:10px; color:#aaa; font-size:12px;">{{ player.role }}</td>
             <td style="padding:10px;">
             <input type="number" name="runs_{{ player.id }}" min="0"

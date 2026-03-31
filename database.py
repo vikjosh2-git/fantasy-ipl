@@ -24,6 +24,7 @@ class Player(db.Model):
     role = db.Column(db.String(20), nullable=False)  # batsman, bowler, allrounder, keeper
     credits = db.Column(db.Float, nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    is_foreigner = db.Column(db.Boolean, default=False)
 
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -69,6 +70,9 @@ class PlayerMatchStats(db.Model):
     catches = db.Column(db.Integer, default=0)
     stumpings = db.Column(db.Integer, default=0)
     maidens = db.Column(db.Integer, default=0)
+    wides = db.Column(db.Integer, default=0)       # NEW
+    no_balls = db.Column(db.Integer, default=0)    # NEW
+    dot_balls = db.Column(db.Integer, default=0)   # NEW (manual entry only)
     run_outs = db.Column(db.Integer, default=0)
     did_play = db.Column(db.Boolean, default=False)
     is_motm = db.Column(db.Boolean, default=False)

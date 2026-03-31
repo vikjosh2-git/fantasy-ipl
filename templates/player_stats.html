@@ -37,6 +37,16 @@
         <option value="bowler">🎯 Bowler</option>
       </select>
     </div>
+    <!-- Overseas Filter -->
+    <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+      <input type="checkbox" id="overseasFilter" onchange="filterPlayers()"
+             style="width:auto; margin:0; padding:0; accent-color:#f5a623;">
+      <label for="overseasFilter" style="color:#aaa; font-size:13px; cursor:pointer;">
+        🌍 Overseas only
+      </label>
+    </div>
+
+    <!-- Reset Filters -->
     <div>
       <button onclick="resetFilters()" class="btn btn-danger"
               style="padding:8px 20px; font-size:13px;">
@@ -67,18 +77,25 @@
           data-team="{{ d.player.ipl_team }}"
           data-role="{{ d.player.role }}"
           data-name="{{ d.player.name.lower() }}"
+          data-foreigner="{{ 'true' if d.player.is_foreigner else 'false' }}"          
+          
           style="border-bottom:1px solid #222; cursor:pointer;
                  {% if d.player.id in my_player_ids %}background:#0a2a0a;{% endif %}"
           onclick="toggleBreakdown('breakdown-{{ d.player.id }}', this)">
         <td style="padding:12px; color:#aaa;" class="rank-cell">{{ loop.index }}</td>
+
         <td style="padding:12px; font-weight:bold;">
           {{ d.player.name }}
+          {% if d.player.is_foreigner %}
+          <span style="font-size:12px;" title="Overseas Player">🌍</span>
+          {% endif %}
           {% if d.player.id in my_player_ids %}
           <span style="background:#43a047; color:white; font-size:10px;
-                       padding:2px 6px; border-radius:10px; margin-left:6px;
-                       vertical-align:middle;">MY TEAM</span>
+                      padding:2px 6px; border-radius:10px; margin-left:6px;
+                      vertical-align:middle;">MY TEAM</span>
           {% endif %}
         </td>
+        
         <td style="padding:12px; font-size:13px;">
           <span style="background:#0f3460; padding:3px 8px;
                        border-radius:6px; color:#ccc;">
@@ -319,6 +336,7 @@
     const team = document.getElementById("teamFilter").value;
     const role = document.getElementById("roleFilter").value;
     const search = document.getElementById("searchInput").value.toLowerCase();
+    const overseasOnly = document.getElementById("overseasFilter")?.checked || false;
     const rows = document.querySelectorAll(".player-row");
     let rank = 1;
 
@@ -326,17 +344,14 @@
       const matchTeam = team === "all" || row.dataset.team === team;
       const matchRole = role === "all" || row.dataset.role === role;
       const matchSearch = row.dataset.name.includes(search);
-      const playerId = row.querySelector("td:last-child").id?.replace("arrow-", "");
-      const breakdown = playerId ?
-        document.getElementById("breakdown-" + playerId) : null;
+      const matchOverseas = !overseasOnly || row.dataset.foreigner === "true";
 
-      if (matchTeam && matchRole && matchSearch) {
+      if (matchTeam && matchRole && matchSearch && matchOverseas) {
         row.style.display = "";
         row.querySelector(".rank-cell").textContent = rank++;
         // Keep breakdown state
       } else {
         row.style.display = "none";
-        if (breakdown) breakdown.style.display = "none";
       }
     });
   }

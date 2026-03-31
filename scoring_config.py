@@ -1,71 +1,87 @@
-# ─────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
 # Fantasy IPL — Scoring Configuration
-# Edit values here to adjust points system
-# ─────────────────────────────────────────────
-
+# All values configurable via Admin UI or by editing this file
+# ─────────────────────────────────────────────────────────────
 
 SCORING_CONFIG = {
-    # ── Season Settings ────────────────────────
-    "season_transfers": 150,        # Total transfers allowed per season
-    "preseason_transfers": True,    # Allow unlimited transfers before first match
 
-    # ── Basic Batting ──────────────────────────
-    "run": 1,                # per run scored
-    "four_bonus": 1,         # per boundary
-    "six_bonus": 2,          # per six
+    # ── Season Settings ────────────────────────────────────────
+    "season_transfers": 150,
+    "preseason_transfers": True,
 
-    # ── Batting Milestones ─────────────────────
-    "century": 16,           # 100+ runs
-    "seventy_five": 8,        # 75-99 runs
-    "half_century": 4,       # 50-74 runs
-    "twenty_five": 2,        # 25-49 runs
+    # ── Team Formation Rules ───────────────────────────────────
+    "team_size": 11,
+    "max_overseas": 4,
+    "min_batsmen": 3,
+    "max_batsmen": 6,
+    "min_bowlers": 3,
+    "max_bowlers": 6,
+    "min_allrounders": 1,
+    "max_allrounders": 4,
+    "min_keepers": 1,
+    "max_keepers": 2,
+    "max_players_per_team": 7,
 
-# ── Batting Strike Rate ────────────────────
-    # Minimum balls faced to qualify
-    "sr_applicable_roles": ["batsman", "keeper", "allrounder"],
+    # ── Match Bonus ────────────────────────────────────────────
+    "motm": 50,
+    "playing_bonus": 5,
+    "winning_team": 5,
+
+    # ── Batting ────────────────────────────────────────────────
+    "run": 1,
+    "four_bonus": 1,
+    "six_bonus": 2,
+    "duck": -5,
+
+    # ── Batting Strike Rate ────────────────────────────────────
     "sr_min_balls": 10,
-    "sr_above_170": 6,
-    "sr_150_170": 4,
-    "sr_130_150": 2,
-    "sr_60_70": -2,
-    "sr_50_60": -4,
-    "sr_below_50": -6,
+    "sr_min_runs": 20,
+    "sr_applicable_roles": ["batsman", "keeper", "allrounder"],
+    "sr_below_100": -10,
+    "sr_100_130": 0,
+    "sr_130_160": 15,
+    "sr_160_200": 30,
+    "sr_above_200": 40,
 
-    # ── Duck Penalty ───────────────────────────
-    # Applies to batsman, keeper, allrounder
-    "duck": -2,
+    # ── Batting Milestones ─────────────────────────────────────
+    "milestone_25": 10,
+    "milestone_40": 20,
+    "milestone_60": 30,
+    "milestone_80": 40,
+    "milestone_105": 50,
+    "milestone_125": 60,
 
-    # ── Basic Bowling ──────────────────────────
-    "wicket": 25,            # per wicket
-    "maiden": 12,            # per maiden over
+    # ── Bowling ────────────────────────────────────────────────
+    "wicket": 40,
+    "maiden": 40,
+    "dot_ball": 1,
+    "wide": -2,
+    "no_ball": -2,
 
-    # ── Bowling Milestones ─────────────────────
-    "five_wickets": 16,      # 5+ wickets
-    "four_wickets": 8,       # 4 wickets
-    "three_wickets": 4,      # 3 wickets
-
-    # ── Bowling Economy ────────────────────────
-    # Minimum overs bowled to qualify
-    "economy_applicable_roles": ["bowler", "allrounder"],
+    # ── Bowling Economy ────────────────────────────────────────
     "economy_min_overs": 2,
-    "economy_below_5": 6,
-    "economy_5_6": 4,
-    "economy_6_7": 2,
-    "economy_10_11": -2,
-    "economy_11_12": -4,
-    "economy_above_12": -6,
+    "economy_applicable_roles": ["bowler", "allrounder"],
+    "economy_below_3": 40,
+    "economy_3_5": 20,
+    "economy_5_7": 10,
+    "economy_7_9": 0,
+    "economy_9_11": -10,
+    "economy_11_13": -20,
+    "economy_above_13": -30,
 
-    # ── Fielding ───────────────────────────────
-    "catch": 8,
-    "stumping": 12,
-    "run_out": 6,
+    # ── Bowling Milestones ─────────────────────────────────────
+    "wicket_milestone_2": 20,
+    "wicket_milestone_3": 30,
+    "wicket_milestone_4": 40,
+    "wicket_milestone_5": 50,
+    "wicket_milestone_6": 60,
 
-    # ── Bonus Points ───────────────────────────
-    "playing_bonus": 4,      # just for playing
-    "motm": 25,              # Man of the Match
-    "winning_team": 4,       # each player in winning team
+    # ── Fielding ───────────────────────────────────────────────
+    "catch": 10,
+    "stumping": 10,
+    "run_out": 10,
 
-    # ── Captain/VC Multipliers ─────────────────
+    # ── Captain/VC Multipliers ─────────────────────────────────
     "captain_multiplier": 2.0,
     "vc_multiplier": 1.5,
 }

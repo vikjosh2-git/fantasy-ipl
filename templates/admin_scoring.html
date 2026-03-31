@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Scoring Rules — Admin{% endblock %}
+{% block content %}
+<a href="/admin" style="color:#f5a623; text-decoration:none;">← Back to Admin</a>
+<h1 class="page-title" style="margin-top:16px;">⚙️ Scoring Configuration</h1>
+
+<form method="POST">
+
+  {% macro section(title) %}
+  <h3 style="color:#f5a623; margin:24px 0 12px; border-bottom:1px solid #333;
+             padding-bottom:8px;">{{ title }}</h3>
+  {% endmacro %}
+
+  {% macro field(key, label, val) %}
+  <div style="display:flex; justify-content:space-between; align-items:center;
+              padding:10px; border-bottom:1px solid #1e2a3a;">
+    <label style="color:#ccc; font-size:13px;">{{ label }}</label>
+    <input type="number" name="{{ key }}" value="{{ val }}" step="0.5"
+           style="width:80px; padding:6px; text-align:center; margin:0;">
+  </div>
+  {% endmacro %}
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("🎯 Match Bonus") }}
+    {{ field("motm", "Man of the Match", config.motm) }}
+    {{ field("playing_bonus", "Playing XI Bonus", config.playing_bonus) }}
+    {{ field("winning_team", "Winning Team Bonus", config.winning_team) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("🏏 Batting") }}
+    {{ field("run", "Per Run", config.run) }}
+    {{ field("four_bonus", "4s Bonus", config.four_bonus) }}
+    {{ field("six_bonus", "6s Bonus", config.six_bonus) }}
+    {{ field("duck", "Duck Penalty", config.duck) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("🏏 Batting Strike Rate") }}
+    {{ field("sr_min_balls", "Min Balls to Qualify", config.sr_min_balls) }}
+    {{ field("sr_min_runs", "Min Runs to Qualify", config.sr_min_runs) }}
+    {{ field("sr_below_100", "SR below 100", config.sr_below_100) }}
+    {{ field("sr_100_130", "SR 100-130", config.sr_100_130) }}
+    {{ field("sr_130_160", "SR 130-160", config.sr_130_160) }}
+    {{ field("sr_160_200", "SR 160-200", config.sr_160_200) }}
+    {{ field("sr_above_200", "SR above 200", config.sr_above_200) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("🏏 Batting Milestones") }}
+    {{ field("milestone_25", "25 Runs", config.milestone_25) }}
+    {{ field("milestone_40", "40 Runs", config.milestone_40) }}
+    {{ field("milestone_60", "60 Runs", config.milestone_60) }}
+    {{ field("milestone_80", "80 Runs", config.milestone_80) }}
+    {{ field("milestone_105", "105 Runs", config.milestone_105) }}
+    {{ field("milestone_125", "125 Runs", config.milestone_125) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("🎯 Bowling") }}
+    {{ field("wicket", "Per Wicket", config.wicket) }}
+    {{ field("maiden", "Per Maiden", config.maiden) }}
+    {{ field("dot_ball", "Per Dot Ball", config.dot_ball) }}
+    {{ field("wide", "Per Wide", config.wide) }}
+    {{ field("no_ball", "Per No Ball", config.no_ball) }}
+    {{ field("economy_min_overs", "Min Overs for Economy", config.economy_min_overs) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("🎯 Bowling Economy") }}
+    {{ field("economy_below_3", "Economy below 3", config.economy_below_3) }}
+    {{ field("economy_3_5", "Economy 3-5", config.economy_3_5) }}
+    {{ field("economy_5_7", "Economy 5-7", config.economy_5_7) }}
+    {{ field("economy_7_9", "Economy 7-9", config.economy_7_9) }}
+    {{ field("economy_9_11", "Economy 9-11", config.economy_9_11) }}
+    {{ field("economy_11_13", "Economy 11-13", config.economy_11_13) }}
+    {{ field("economy_above_13", "Economy above 13", config.economy_above_13) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("🎯 Bowling Milestones") }}
+    {{ field("wicket_milestone_2", "2 Wickets", config.wicket_milestone_2) }}
+    {{ field("wicket_milestone_3", "3 Wickets", config.wicket_milestone_3) }}
+    {{ field("wicket_milestone_4", "4 Wickets", config.wicket_milestone_4) }}
+    {{ field("wicket_milestone_5", "5 Wickets", config.wicket_milestone_5) }}
+    {{ field("wicket_milestone_6", "6+ Wickets", config.wicket_milestone_6) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("🧤 Fielding") }}
+    {{ field("catch", "Per Catch", config.catch) }}
+    {{ field("stumping", "Per Stumping", config.stumping) }}
+    {{ field("run_out", "Per Run Out", config.run_out) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    {{ section("👑 Captain / VC") }}
+    {{ field("captain_multiplier", "Captain Multiplier", config.captain_multiplier) }}
+    {{ field("vc_multiplier", "Vice Captain Multiplier", config.vc_multiplier) }}
+  </div>
+
+  <div style="text-align:center; margin-bottom:40px;">
+    <button type="submit" class="btn btn-primary"
+            style="padding:14px 50px; font-size:16px;">
+      💾 Save Scoring Rules
+    </button>
+  </div>
+
+</form>
+{% endblock %}

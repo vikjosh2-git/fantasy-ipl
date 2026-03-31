@@ -8,12 +8,35 @@
             position:sticky; top:70px; z-index:999;
             background:#1a1a2e; padding:12px 0;
             box-shadow:0 4px 10px rgba(0,0,0,0.4);">
-  <div class="card" style="flex:1; min-width:150px; text-align:center;">
+  
+<div class="card" style="flex:1; min-width:120px; text-align:center;">
     <div style="color:#aaa; font-size:12px;">Selected</div>
-    <div style="font-size:22px; font-weight:bold; color:#f5a623;">
-      <span id="selectedCount">0</span>/11
+    <div style="font-size:20px; font-weight:bold; color:#f5a623;">
+      <span id="selectedCount">0</span>/{{ rules.team_size }}
     </div>
   </div>
+  <div class="card" style="flex:1; min-width:120px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">🌍 Overseas</div>
+    <div style="font-size:20px; font-weight:bold;" id="overseasCount"
+         style="color:#f5a623;">0/{{ rules.max_overseas }}</div>
+  </div>
+  <div class="card" style="flex:1; min-width:120px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">🏏 Bat</div>
+    <div style="font-size:20px; font-weight:bold; color:#f5a623;" id="batsmanCount">0</div>
+  </div>
+  <div class="card" style="flex:1; min-width:120px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">🎯 Bowl</div>
+    <div style="font-size:20px; font-weight:bold; color:#f5a623;" id="bowlerCount">0</div>
+  </div>
+  <div class="card" style="flex:1; min-width:120px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">⚡ AR</div>
+    <div style="font-size:20px; font-weight:bold; color:#f5a623;" id="allrounderCount">0</div>
+  </div>
+  <div class="card" style="flex:1; min-width:120px; text-align:center;">
+    <div style="color:#aaa; font-size:12px;">🧤 WK</div>
+    <div style="font-size:20px; font-weight:bold; color:#f5a623;" id="keeperCount">0</div>
+  </div>  
+
   <div class="card" style="flex:1; min-width:150px; text-align:center;">
     <div style="color:#aaa; font-size:12px;">Budget Left</div>
     <div style="font-size:22px; font-weight:bold; color:#f5a623;">
@@ -39,6 +62,21 @@
     <div style="font-size:22px; font-weight:bold; color:#81c784;">
       <span id="windowTransfers">0</span> net
     </div>
+  </div>
+</div>
+
+<!-- Team Rules -->
+<div class="card" style="margin-bottom:20px; padding:14px;">
+  <div style="color:#f5a623; font-size:13px; font-weight:bold; margin-bottom:10px;">
+    📋 Team Formation Rules
+  </div>
+  <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#aaa;">
+    <span>🏏 Bat: <strong style="color:white;">{{ rules.min_batsmen }}-{{ rules.max_batsmen }}</strong></span>
+    <span>🎯 Bowl: <strong style="color:white;">{{ rules.min_bowlers }}-{{ rules.max_bowlers }}</strong></span>
+    <span>⚡ AR: <strong style="color:white;">{{ rules.min_allrounders }}-{{ rules.max_allrounders }}</strong></span>
+    <span>🧤 WK: <strong style="color:white;">{{ rules.min_keepers }}-{{ rules.max_keepers }}</strong></span>
+    <span>🌍 Overseas: <strong style="color:white;">Max {{ rules.max_overseas }}</strong></span>
+    <span>🏟️ Per Team: <strong style="color:white;">Max {{ rules.max_players_per_team }}</strong></span>
   </div>
 </div>
 
@@ -96,6 +134,15 @@
       </label>
     </div>
     {% endif %}
+    
+    <!-- Overseas Filter -->
+    <div style="display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="overseasFilter" onchange="filterPlayers()"
+             style="width:auto; margin:0; padding:0; accent-color:#f5a623;">
+      <label for="overseasFilter" style="color:#aaa; font-size:13px; cursor:pointer;">
+        🌍 Overseas only
+      </label>
+    </div>
 
     <!-- Reset Button -->
     <div>
@@ -111,6 +158,20 @@
 <!-- Store next match teams as JS variable -->
 <script>
   const nextMatchTeams = {{ next_match_teams | tojson }};
+  // Team formation rules from config
+  const RULES = {
+    teamSize: {{ rules.team_size }},
+    maxOverseas: {{ rules.max_overseas }},
+    minBatsmen: {{ rules.min_batsmen }},
+    maxBatsmen: {{ rules.max_batsmen }},
+    minBowlers: {{ rules.min_bowlers }},
+    maxBowlers: {{ rules.max_bowlers }},
+    minAllrounders: {{ rules.min_allrounders }},
+    maxAllrounders: {{ rules.max_allrounders }},
+    minKeepers: {{ rules.min_keepers }},
+    maxKeepers: {{ rules.max_keepers }},
+    maxPerTeam: {{ rules.max_players_per_team }},
+  };
 </script>
 
 <!-- Players by Role -->
@@ -127,10 +188,16 @@
          data-points="{{ player_points.get(p.id, 0) }}"
          data-credits="{{ p.credits }}"
          data-next-match="{{ 'yes' if p.ipl_team in next_match_teams else 'no' }}"
-         
+         data-foreigner="{{ 'true' if p.is_foreigner else 'false' }}"
+
          style="width:170px; cursor:pointer; border:2px solid transparent; padding:14px; text-align:center;"
          onclick="togglePlayer({{ p.id }}, {{ p.credits }}, '{{ p.name }}')">
-      <div style="font-size:13px; font-weight:bold;">{{ p.name }}</div>
+      <div style="font-size:13px; font-weight:bold;">
+        {{ p.name }}
+        {% if p.is_foreigner %}
+        <span style="font-size:10px;" title="Overseas Player">🌍</span>
+        {% endif %}
+      </div>
       <div style="color:#aaa; font-size:11px; margin-top:4px;">{{ p.ipl_team }}</div>
       <div style="color:#f5a623; font-size:13px; margin-top:6px;">💰 {{ p.credits }} cr</div>
       <div style="color:#81c784; font-size:12px; margin-top:2px;">
@@ -210,23 +277,77 @@
     return match ? parseFloat(match[1]) : 0;
   }
 
+  function getCardInfo(id) {
+    const card = document.getElementById("card-" + id);
+    return {
+      role: card.dataset.role,
+      team: card.dataset.team,
+      foreigner: card.dataset.foreigner === "true",
+      credits: parseFloat(card.innerText.match(/💰 ([\d.]+)/)?.[1] || 0)
+    };
+  }
+
+  function getCounts() {
+    let batsmen = 0, bowlers = 0, allrounders = 0, keepers = 0, overseas = 0;
+    const teamCounts = {};
+    selected.forEach(id => {
+      const info = getCardInfo(id);
+      if (info.role === "batsman") batsmen++;
+      else if (info.role === "bowler") bowlers++;
+      else if (info.role === "allrounder") allrounders++;
+      else if (info.role === "keeper") keepers++;
+      if (info.foreigner) overseas++;
+      teamCounts[info.team] = (teamCounts[info.team] || 0) + 1;
+    });
+    return { batsmen, bowlers, allrounders, keepers, overseas, teamCounts };
+  }
+
   function togglePlayer(id, credits, name) {
+    const info = getCardInfo(id);
+    const card = document.getElementById("card-" + id);
+    const counts = getCounts();
+
     if (selected.includes(id)) {
+      // Deselect
       selected = selected.filter(x => x !== id);
       budget += credits;
-      document.getElementById("card-" + id).style.borderColor = "transparent";
+      card.style.borderColor = "transparent";
       if (captainId === id) { captainId = null; captainName = "None"; }
       if (vcId === id) { vcId = null; vcName = "None"; }
     } else {
-      if (selected.length >= 11) { showError("You can only select 11 players!"); return; }
-      if (budget < credits) { showError("Not enough budget!"); return; }
+      // Validate before adding
+      if (selected.length >= RULES.teamSize) {
+        showError(`You can only select ${RULES.teamSize} players!`); return;
+      }
+      if (budget < credits) {
+        showError("Not enough budget!"); return;
+      }
+      if (info.foreigner && counts.overseas >= RULES.maxOverseas) {
+        showError(`Max ${RULES.maxOverseas} overseas players allowed!`); return;
+      }
+      if (info.role === "batsman" && counts.batsmen >= RULES.maxBatsmen) {
+        showError(`Max ${RULES.maxBatsmen} batsmen allowed!`); return;
+      }
+      if (info.role === "bowler" && counts.bowlers >= RULES.maxBowlers) {
+        showError(`Max ${RULES.maxBowlers} bowlers allowed!`); return;
+      }
+      if (info.role === "allrounder" && counts.allrounders >= RULES.maxAllrounders) {
+        showError(`Max ${RULES.maxAllrounders} all-rounders allowed!`); return;
+      }
+      if (info.role === "keeper" && counts.keepers >= RULES.maxKeepers) {
+        showError(`Max ${RULES.maxKeepers} wicket-keepers allowed!`); return;
+      }
+      if ((counts.teamCounts[info.team] || 0) >= RULES.maxPerTeam) {
+        showError(`Max ${RULES.maxPerTeam} players from same team allowed!`); return;
+      }
+
       selected.push(id);
       budget -= credits;
-      document.getElementById("card-" + id).style.borderColor = "#4fc3f7";
+      card.style.borderColor = "#4fc3f7";
     }
     updateBar();
   }
-
+  
   function setCaptain(id, name) {
     if (!selected.includes(id)) { showError("Select the player first!"); return; }
     if (vcId === id) { showError("Already set as Vice Captain!"); return; }
@@ -246,10 +367,33 @@
   }
 
   function updateBar() {
+    const counts = getCounts();
     document.getElementById("selectedCount").textContent = selected.length;
     document.getElementById("budgetLeft").textContent = budget.toFixed(1);
     document.getElementById("captainName").textContent = captainName;
     document.getElementById("vcName").textContent = vcName;
+
+    // Update role counts with color coding
+    const overseasEl = document.getElementById("overseasCount");
+    overseasEl.textContent = `${counts.overseas}/${RULES.maxOverseas}`;
+    overseasEl.style.color = counts.overseas >= RULES.maxOverseas ? "#ef5350" : "#f5a623";
+
+    const batEl = document.getElementById("batsmanCount");
+    batEl.textContent = counts.batsmen;
+    batEl.style.color = counts.batsmen < RULES.minBatsmen ? "#ef5350" : "#43a047";
+
+    const bowlEl = document.getElementById("bowlerCount");
+    bowlEl.textContent = counts.bowlers;
+    bowlEl.style.color = counts.bowlers < RULES.minBowlers ? "#ef5350" : "#43a047";
+
+    const arEl = document.getElementById("allrounderCount");
+    arEl.textContent = counts.allrounders;
+    arEl.style.color = counts.allrounders < RULES.minAllrounders ? "#ef5350" : "#43a047";
+
+    const wkEl = document.getElementById("keeperCount");
+    wkEl.textContent = counts.keepers;
+    wkEl.style.color = counts.keepers < RULES.minKeepers ? "#ef5350" : "#43a047";
+
     document.getElementById("errorMsg").textContent = "";
   }
 
@@ -258,62 +402,75 @@
   }
 
   function filterPlayers() {
-    const teamEl = document.getElementById("teamFilter");
-    const roleEl = document.getElementById("roleFilter");
-    const creditsEl = document.getElementById("creditsFilter");
-    const nextMatchEl = document.getElementById("nextMatchFilter");
+      const team = document.getElementById("teamFilter").value;
+      const role = document.getElementById("roleFilter").value;
+      const maxCredits = parseFloat(document.getElementById("creditsFilter").value);
+      const nextMatchOnly = document.getElementById("nextMatchFilter")?.checked || false;
+      const overseasOnly = document.getElementById("overseasFilter")?.checked || false;
 
-    const team = teamEl ? teamEl.value : "all";
-    const role = roleEl ? roleEl.value : "all";
-    const maxCredits = creditsEl ? parseFloat(creditsEl.value) : 12;
-    const nextMatchOnly = nextMatchEl ? nextMatchEl.checked : false;
+      document.querySelectorAll(".player-card").forEach(card => {
+        const matchTeam = team === "all" || card.dataset.team === team;
+        const matchRole = role === "all" || card.dataset.role === role;
+        const matchCredits = parseFloat(card.dataset.credits || 12) <= maxCredits;
+        const matchNext = !nextMatchOnly || card.dataset.nextMatch === "yes";
+        const matchOverseas = !overseasOnly || card.dataset.foreigner === "true";
 
-    document.querySelectorAll(".player-card").forEach(card => {
-      const matchTeam = team === "all" || card.dataset.team === team;
-      const matchRole = role === "all" || card.dataset.role === role;
-      const matchCredits = parseFloat(card.dataset.credits || 11 ) <= maxCredits;
-      const matchNext = !nextMatchOnly || card.dataset.nextMatch === "yes";
+        card.style.display = (matchTeam && matchRole && matchCredits && matchNext && matchOverseas)
+          ? "block" : "none";
+      });
+    }
 
-      card.style.display = (matchTeam && matchRole && matchCredits && matchNext)
-        ? "block" : "none";
-    });
-  }
-
-  function resetFilters() {
-    const teamEl = document.getElementById("teamFilter");
-    const roleEl = document.getElementById("roleFilter");
-    const creditsEl = document.getElementById("creditsFilter");
-    const creditsVal = document.getElementById("creditsVal");
-    const nextMatchEl = document.getElementById("nextMatchFilter");
-
-    if (teamEl) teamEl.value = "all";
-    if (roleEl) roleEl.value = "all";
-    if (creditsEl) creditsEl.value = 11;
-    if (creditsVal) creditsVal.textContent = "11";
-    if (nextMatchEl) nextMatchEl.checked = false;
+function resetFilters() {
+    document.getElementById("teamFilter").value = "all";
+    document.getElementById("roleFilter").value = "all";
+    document.getElementById("creditsFilter").value = 12;
+    document.getElementById("creditsVal").textContent = "12";
+    const nextFilter = document.getElementById("nextMatchFilter");
+    if (nextFilter) nextFilter.checked = false;
+    const overseasFilter = document.getElementById("overseasFilter");
+    if (overseasFilter) overseasFilter.checked = false;
     filterPlayers();
   }
-
-  function submitTeam() {
-  if (selected.length !== 11) { showError("Please select exactly 11 players!"); return; }
-  if (!captainId) { showError("Please select a Captain!"); return; }
-  if (!vcId) { showError("Please select a Vice Captain!"); return; }
-
-  fetch("/save-team", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player_ids: selected, captain_id: captainId, vice_captain_id: vcId })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
-      alert(`Team saved! Transfers used this window: ${data.window_transfers_used}. Season transfers remaining: ${data.transfers_remaining}`);
-      window.location.href = "/dashboard";
-    } else {
-      showError(data.message);
+    function submitTeam() {
+    if (selected.length !== RULES.teamSize) {
+      showError(`Please select exactly ${RULES.teamSize} players!`); return;
     }
-  });
-}
+    if (!captainId) { showError("Please select a Captain!"); return; }
+    if (!vcId) { showError("Please select a Vice Captain!"); return; }
+
+    const counts = getCounts();
+
+    if (counts.batsmen < RULES.minBatsmen) {
+      showError(`Need at least ${RULES.minBatsmen} batsmen! You have ${counts.batsmen}.`); return;
+    }
+    if (counts.bowlers < RULES.minBowlers) {
+      showError(`Need at least ${RULES.minBowlers} bowlers! You have ${counts.bowlers}.`); return;
+    }
+    if (counts.allrounders < RULES.minAllrounders) {
+      showError(`Need at least ${RULES.minAllrounders} all-rounder! You have ${counts.allrounders}.`); return;
+    }
+    if (counts.keepers < RULES.minKeepers) {
+      showError(`Need at least ${RULES.minKeepers} wicket-keeper! You have ${counts.keepers}.`); return;
+    }
+
+    fetch("/save-team", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        player_ids: selected,
+        captain_id: captainId,
+        vice_captain_id: vcId
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        window.location.href = "/dashboard";
+      } else {
+        showError(data.message);
+      }
+    });
+  }
 
 </script>
 {% endblock %}
