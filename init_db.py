@@ -1,6 +1,7 @@
-from database import db, app
-with app.app_context():
-    # Create all missing tables
-    db.create_all()
-    print("✅ All tables created/verified!")
-    
+import os
+if os.environ.get("RUN_SEED") == "true":
+    print("🌱 Running seed...")
+    from seed_players import seed_players, seed_matches
+    seed_players()
+    seed_matches()
+    print("✅ Seed complete!")

@@ -270,9 +270,9 @@ def seed_matches():
 
         matches = [
       Match(match_number=1, team1="Royal Challengers Bengaluru", team2="Sunrisers Hyderabad", venue="M. Chinnaswamy Stadium, Bengaluru", match_date=datetime(2026, 3, 28, 19, 30), status="completed", cricapi_match_id="55fe0f15-6eb0-4ad5-835b-5564be4f6a21"),
-      Match(match_number=2, team1="Mumbai Indians", team2="Kolkata Knight Riders", venue="Wankhede Stadium, Mumbai", match_date=datetime(2026, 3, 29, 19, 30), status="live", cricapi_match_id="e02475c1-8f9a-4915-a9e8-d4dbc3441c96"),
-      Match(match_number=3, team1="Rajasthan Royals", team2="Chennai Super Kings", venue="Barsapara Cricket Stadium, Guwahati", match_date=datetime(2026, 3, 30, 19, 30), status="upcoming", cricapi_match_id="d788e9f9-99bf-4650-a035-92a7e21b3d08"),
-      Match(match_number=4, team1="Punjab Kings", team2="Gujarat Titans", venue="PCA Stadium, New Chandigarh", match_date=datetime(2026, 3, 31, 19, 30), status="upcoming", cricapi_match_id="11ff7db9-9c71-464e-afcb-5b03e4fa4b0a"),
+      Match(match_number=2, team1="Mumbai Indians", team2="Kolkata Knight Riders", venue="Wankhede Stadium, Mumbai", match_date=datetime(2026, 3, 29, 19, 30), status="completed", cricapi_match_id="e02475c1-8f9a-4915-a9e8-d4dbc3441c96"),
+      Match(match_number=3, team1="Rajasthan Royals", team2="Chennai Super Kings", venue="Barsapara Cricket Stadium, Guwahati", match_date=datetime(2026, 3, 30, 19, 30), status="completed", cricapi_match_id="d788e9f9-99bf-4650-a035-92a7e21b3d08"),
+      Match(match_number=4, team1="Punjab Kings", team2="Gujarat Titans", venue="PCA Stadium, New Chandigarh", match_date=datetime(2026, 3, 31, 19, 30), status="completed", cricapi_match_id="11ff7db9-9c71-464e-afcb-5b03e4fa4b0a"),
       Match(match_number=5, team1="Lucknow Super Giants", team2="Delhi Capitals", venue="BRSABV Ekana Cricket Stadium, Lucknow", match_date=datetime(2026, 4, 1, 19, 30), status="upcoming", cricapi_match_id="ae676d7c-3082-489c-96c5-5620f393c900"),
       Match(match_number=6, team1="Kolkata Knight Riders", team2="Sunrisers Hyderabad", venue="Eden Gardens, Kolkata", match_date=datetime(2026, 4, 2, 19, 30), status="upcoming", cricapi_match_id="fd010e39-2255-4460-b0e0-962a26b67b70"),
       Match(match_number=7, team1="Chennai Super Kings", team2="Punjab Kings", venue="MA Chidambaram Stadium, Chennai", match_date=datetime(2026, 4, 3, 19, 30), status="upcoming", cricapi_match_id="96d2aa6b-ea40-4da4-b4cf-eb996de24ef7"),
