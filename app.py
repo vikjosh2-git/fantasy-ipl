@@ -1048,8 +1048,15 @@ def scrape_scorecard():
     if not match or not match.cricapi_match_id:
         flash("This match has no CricAPI ID configured!", "error")
         return redirect(url_for("admin"))
+    import os
+    cache_file = os.path.join("scorecard_cache", f"{match.cricapi_match_id}.json")
+    from_cache = os.path.exists(cache_file)
     csv_content, error = fetch_cricapi_scorecard(match.cricapi_match_id)
     
+    # Store in session for scrape_preview to use
+    session["from_cache"] = from_cache
+    session["scrape_match_api_id"] = match.cricapi_match_id
+
     if error:
         flash(f"Scraping failed: {error}", "error")
         return redirect(url_for("admin"))
@@ -1097,10 +1104,14 @@ def scrape_preview():
             "name_in_csv": name
         })
 
+    from_cache = session.pop("from_cache", False)
+    match_api_id = session.pop("scrape_match_api_id", "")
+
     return render_template("scrape_preview.html",
                            match=match,
                            preview_data=preview_data,
-                           csv_content=csv_content)
+                           from_cache=from_cache,
+                           match_api_id=match_api_id)
 
 @app.route("/admin/scrape-confirm", methods=["POST"])
 @admin_required
@@ -1212,28 +1223,37 @@ def admin_scoring():
 
     if request.method == "POST":
         new_config = {}
+        # Fields to skip from form (keep existing values)
+        skip_fields = ["preseason_transfers", "sr_applicable_roles", 
+                       "economy_applicable_roles"]
+        
         for key, value in SCORING_CONFIG.items():
-            if isinstance(value, list):
-                # Handle list values like sr_applicable_roles
+            if key in skip_fields:
                 new_config[key] = value
-            elif isinstance(value, bool):
-                new_config[key] = request.form.get(key) == "on"
+            elif isinstance(value, list):
+                new_config[key] = value
+            elif isinstance(value, bool) or value in (True, False):
+                new_config[key] = value
             elif isinstance(value, int):
-                new_config[key] = int(request.form.get(key, value))
+                try:
+                    new_config[key] = int(request.form.get(key, value))
+                except (ValueError, TypeError):
+                    new_config[key] = value
             elif isinstance(value, float):
-                new_config[key] = float(request.form.get(key, value))
+                try:
+                    new_config[key] = float(request.form.get(key, value))
+                except (ValueError, TypeError):
+                    new_config[key] = value
             else:
                 new_config[key] = request.form.get(key, value)
 
         # Write back to scoring_config.py
         config_path = os.path.join(os.path.dirname(__file__), "scoring_config.py")
-        with open(config_path, "w") as f:
-            f.write("# ─────────────────────────────────────────────────────────────\n")
-            f.write("# Fantasy IPL — Scoring Configuration\n")
-            f.write("# Configurable via Admin UI\n")
-            f.write("# ─────────────────────────────────────────────────────────────\n\n")
+        with open(config_path, "w", encoding="utf-8") as f:
+            f.write("# Fantasy IPL - Scoring Configuration\n")
+            f.write("# Configurable via Admin UI\n\n")
             f.write("SCORING_CONFIG = ")
-            f.write(json.dumps(new_config, indent=4))
+            f.write(repr(new_config))
             f.write("\n")
 
         flash("✅ Scoring rules updated successfully!", "success")
@@ -1246,36 +1266,29 @@ def rules():
     from scoring_config import SCORING_CONFIG as c
     return render_template("rules.html", c=c)
 
-@app.route("/admin/run-seed-once")
+@app.route("/admin/clear-match-cache/<match_api_id>")
 @admin_required
-def run_seed_once():
-    key = request.args.get("key")
-    if key != "seed2026ipl":
-        return "Invalid key", 403
-    
-    try:
-        from database import db, Player, Match, PlayerMatchStats, UserTeam, UserMatchTeam, TransferHistory, TransferWindow
-        
-        # Delete in correct order (children before parents)
-        TransferHistory.query.delete()
-        TransferWindow.query.delete()
-        UserMatchTeam.query.delete()
-        PlayerMatchStats.query.delete()
-        UserTeam.query.delete()
-        Match.query.delete()
-        Player.query.delete()
-        db.session.commit()
-        print("✅ Cleared all data")
+def clear_match_cache(match_api_id):
+    import os
+    cache_file = os.path.join("scorecard_cache", f"{match_api_id}.json")
+    if os.path.exists(cache_file):
+        os.remove(cache_file)
+        flash("✅ Cache cleared! Re-fetch to get fresh data from CricAPI.", "success")
+    else:
+        flash("No cache found for this match.", "info")
+    return redirect(url_for("admin"))
 
-        # Now seed
-        from seed_players import seed_players, seed_matches
-        seed_players()
-        seed_matches()
-        
-        return "✅ Seeding complete! Remove this route now.", 200
-    except Exception as e:
-        db.session.rollback()
-        return f"❌ Error: {e}", 500
-    
+@app.route("/admin/clear-all-cache")
+@admin_required
+def clear_all_cache():
+    import os, shutil
+    cache_dir = "scorecard_cache"
+    count = len(os.listdir(cache_dir)) if os.path.exists(cache_dir) else 0
+    if os.path.exists(cache_dir):
+        shutil.rmtree(cache_dir)
+    os.makedirs(cache_dir, exist_ok=True)
+    flash(f"✅ Cleared {count} cached scorecard(s)!", "success")
+    return redirect(url_for("admin"))
+
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

@@ -156,7 +156,7 @@ def parse_cricapi_scorecard(match_data):
         fieldnames = [
             "player_name", "runs", "balls_faced", "fours", "sixes",
             "wickets", "overs_bowled", "runs_conceded", "maidens",
-            "catches", "stumpings", "run_outs", "is_motm",
+            "wides", "no_balls", "catches", "stumpings", "run_outs", "is_motm",
             "is_winner", "did_play"
         ]
         writer = csv.DictWriter(output, fieldnames=fieldnames)
@@ -174,6 +174,8 @@ def parse_cricapi_scorecard(match_data):
                     "overs_bowled": round(stats["overs_bowled"], 2),
                     "runs_conceded": stats["runs_conceded"],
                     "maidens": stats["maidens"],
+                    "wides": stats["wides"],
+                    "no_balls": stats["no_balls"],
                     "catches": stats["catches"],
                     "stumpings": stats["stumpings"],
                     "run_outs": stats["run_outs"],

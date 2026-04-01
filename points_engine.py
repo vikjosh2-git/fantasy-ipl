@@ -18,7 +18,6 @@ def save_player_stats(player, match_id, stats_dict, existing_stats):
         stat.maidens = stats_dict["maidens"]
         stat.wides = stats_dict.get("wides", 0)
         stat.no_balls = stats_dict.get("no_balls", 0)
-        stat.dot_balls = stats_dict.get("dot_balls", 0)
         stat.catches = stats_dict["catches"]
         stat.stumpings = stats_dict["stumpings"]
         stat.run_outs = stats_dict["run_outs"]
@@ -40,7 +39,6 @@ def save_player_stats(player, match_id, stats_dict, existing_stats):
             maidens=stats_dict["maidens"],
             wides=stats_dict.get("wides", 0),
             no_balls=stats_dict.get("no_balls", 0),
-            dot_balls=stats_dict.get("dot_balls", 0),
             catches=stats_dict["catches"],
             stumpings=stats_dict["stumpings"],
             run_outs=stats_dict["run_outs"],

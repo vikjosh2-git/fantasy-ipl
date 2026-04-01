@@ -9,6 +9,32 @@
   {{ match.team1 }} vs {{ match.team2 }} · {{ match.match_date.strftime('%b %d, %Y') }}
 </div>
 
+<!-- Cache Status Banner -->
+{% if from_cache %}
+<div style="background:#0a1a0a; border:1px solid #43a047; border-radius:8px;
+            padding:14px 18px; margin-bottom:16px; font-size:13px;
+            display:flex; justify-content:space-between; align-items:center;">
+  <div>
+    <span style="color:#43a047; font-weight:bold;">📦 Loaded from cache</span>
+    <span style="color:#aaa; margin-left:8px;">
+      This scorecard was fetched from local cache, not live from CricAPI.
+    </span>
+  </div>
+  <a href="/admin/clear-match-cache/{{ match_api_id }}"
+     class="btn btn-danger"
+     style="padding:6px 16px; font-size:12px; white-space:nowrap; margin-left:16px;"
+     onclick="return confirm('Clear cache and re-fetch fresh data?')">
+    🗑️ Clear Cache & Re-fetch
+  </a>
+</div>
+{% else %}
+<div style="background:#001a0a; border:1px solid #1d9e75; border-radius:8px;
+            padding:14px 18px; margin-bottom:16px; font-size:13px; color:#aaa;">
+  <span style="color:#1d9e75; font-weight:bold;">🌐 Live from CricAPI</span>
+  <span style="margin-left:8px;">Fresh data fetched and cached for future use.</span>
+</div>
+{% endif %}
+
 <!-- MOTM Notice -->
 <div style="background:#1a0a00; border:1px solid #f5a623; border-radius:8px;
             padding:14px 18px; margin-bottom:20px; font-size:13px; color:#aaa;">
@@ -57,7 +83,6 @@
         <th style="padding:10px;">Mdns</th>
         <th style="padding:10px;">Wd</th>
         <th style="padding:10px;">NB</th>
-        <th style="padding:10px;">Dots</th>
         <th style="padding:10px;">Ct</th>
         <th style="padding:10px;">St</th>
         <th style="padding:10px;">RO</th>
@@ -100,7 +125,6 @@
         <td style="padding:10px; text-align:center;">{{ d.row.maidens }}</td>
         <td style="padding:10px; text-align:center;">{{ d.row.get('wides', 0) if d.row is mapping else d.row.wides|default(0) }}</td>
         <td style="padding:10px; text-align:center;">{{ d.row.get('no_balls', 0) if d.row is mapping else d.row.no_balls|default(0) }}</td>
-        <td style="padding:10px; text-align:center;">{{ d.row.get('dot_balls', 0) if d.row is mapping else d.row.dot_balls|default(0) }}</td>
         <td style="padding:10px; text-align:center;">{{ d.row.catches }}</td>
         <td style="padding:10px; text-align:center;">{{ d.row.stumpings }}</td>
         <td style="padding:10px; text-align:center;">{{ d.row.run_outs }}</td>

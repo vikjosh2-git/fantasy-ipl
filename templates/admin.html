@@ -1,54 +1,77 @@
 {% extends "base.html" %}
 {% block title %}Admin — Fantasy IPL{% endblock %}
 {% block content %}
-<h1 class="page-title">⚙️ Admin Panel</h1>
 
-<div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
-  <a href="/admin/users" class="btn btn-info" style="padding:8px 20px;">
-    👥 Manage Users
-  </a>
-  <a href="/admin/scoring" class="btn btn-info" style="margin-bottom:16px; display:inline-block;">
-  ⚙️ Edit Scoring Rules
-  </a>
+<!-- Header row with title + action buttons -->
+<div style="display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:24px; flex-wrap:wrap; gap:12px;">
+  <h1 class="page-title" style="margin:0;">⚙️ Admin Panel</h1>
+  <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <a href="/admin/users" class="btn"
+       style="padding:8px 18px; background:#185fa5; color:white;
+              border-radius:8px; font-size:13px; white-space:nowrap;">
+      👥 Manage Users
+    </a>
+    <a href="/admin/scoring" class="btn"
+       style="padding:8px 18px; background:#0f6e56; color:white;
+              border-radius:8px; font-size:13px; white-space:nowrap;">
+      ⚙️ Scoring Rules
+    </a>
+  </div>
 </div>
-
 
 <!-- Workflow 0: Scrape from CricAPI -->
 <div class="card" style="margin-bottom:24px;">
-  <h2 style="color:#f5a623; margin-bottom:16px;">
-    🌐 Auto-Import Scorecard from CricAPI
-  </h2>
+
+  <!-- Card header row -->
+  <div style="display:flex; justify-content:space-between; align-items:center;
+              margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+    <h2 style="color:#f5a623; margin:0; font-size:17px;">
+      🌐 Auto-Import Scorecard from CricAPI
+    </h2>
+    <a href="/admin/clear-all-cache" 
+       style="padding:6px 14px; background:#7a1f1f; color:#f9a8a8;
+              border-radius:8px; font-size:12px; text-decoration:none;
+              white-space:nowrap; border:1px solid #a83232;"
+       onclick="return confirm('Clear ALL cached scorecards?')">
+      🗑️ Clear All Cache
+    </a>
+  </div>
+
   <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
     Select a completed match and the system will automatically
     fetch the full scorecard from CricAPI — no URL needed!
   </p>
+
   <form method="POST" action="/admin/scrape-scorecard">
-    <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
+    <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
       <div style="flex:1; min-width:200px;">
-        <label style="color:#aaa; font-size:13px;">Select Match</label>
-        <select name="match_id" required style="width:100%; margin-top:6px;">
+        <label style="color:#aaa; font-size:13px; display:block; margin-bottom:6px;">
+          Select Match
+        </label>
+        <select name="match_id" required style="width:100%;">
           <option value="">-- Select Match --</option>
           {% for match in live_matches %}
           <option value="{{ match.id }}">
-            🔴 Match {{ match.match_number }}:
-            {{ match.team1 }} vs {{ match.team2 }}
+            🔴 Match {{ match.match_number }}: {{ match.team1 }} vs {{ match.team2 }}
           </option>
           {% endfor %}
           {% for match in completed_matches %}
           <option value="{{ match.id }}">
-            ✅ Match {{ match.match_number }}:
-            {{ match.team1 }} vs {{ match.team2 }}
+            ✅ Match {{ match.match_number }}: {{ match.team1 }} vs {{ match.team2 }}
           </option>
           {% endfor %}
         </select>
       </div>
-      <div>
-        <button type="submit" class="btn btn-primary">
-          🌐 Fetch & Preview Scorecard
+      <div style="flex-shrink:0;">
+        <button type="submit" class="btn btn-primary"
+                style="padding:10px 20px; white-space:nowrap;">
+          🌐 Fetch & Preview
         </button>
       </div>
     </div>
   </form>
+
   <div style="margin-top:12px; background:#0f3460; border-radius:8px; padding:12px;">
     <div style="color:#aaa; font-size:12px;">
       💡 Data is fetched directly from CricAPI using your existing API key.
@@ -60,15 +83,18 @@
 
 <!-- Workflow 2: Correct Scores for Completed Match -->
 <div class="card" style="margin-bottom:24px;">
-  <h2 style="color:#f5a623; margin-bottom:16px;">✏️ Correct Match Scores</h2>
+  <h2 style="color:#f5a623; margin-bottom:12px; font-size:17px;">
+    ✏️ Correct Match Scores
+  </h2>
   <p style="color:#aaa; font-size:13px; margin-bottom:16px;">
     Select a completed match to view and correct player stats manually.
   </p>
-  <div style="display:flex; gap:16px; align-items:flex-end; flex-wrap:wrap;">
+  <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
     <div style="flex:1; min-width:200px;">
-      <label style="color:#aaa; font-size:13px;">Select Completed Match</label>
-      <select id="completedMatchSelect"
-              style="width:100%; margin-top:6px;"
+      <label style="color:#aaa; font-size:13px; display:block; margin-bottom:6px;">
+        Select Completed Match
+      </label>
+      <select id="completedMatchSelect" style="width:100%;"
               onchange="if(this.value) window.location.href='/admin/match/'+this.value">
         <option value="">-- Select Match --</option>
         {% for match in completed_matches %}
@@ -80,4 +106,5 @@
     </div>
   </div>
 </div>
+
 {% endblock %}

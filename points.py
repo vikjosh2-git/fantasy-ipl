@@ -52,7 +52,6 @@ def calculate_points(stats):
     wickets = stats.get("wickets", 0)
     points += wickets * c["wicket"]
     points += stats.get("maidens", 0) * c["maiden"]
-    points += stats.get("dot_balls", 0) * c["dot_ball"]
     points += stats.get("wides", 0) * c["wide"]
     points += stats.get("no_balls", 0) * c["no_ball"]
 
