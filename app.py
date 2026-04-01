@@ -1249,18 +1249,32 @@ def rules():
 @app.route("/admin/run-seed-once")
 @admin_required
 def run_seed_once():
-    import os
-    # Safety key to prevent accidental runs
     key = request.args.get("key")
     if key != "seed2026ipl":
         return "Invalid key", 403
     
     try:
+        from database import db, Player, Match, PlayerMatchStats, UserTeam, UserMatchTeam, TransferHistory, TransferWindow
+        
+        # Delete in correct order (children before parents)
+        TransferHistory.query.delete()
+        TransferWindow.query.delete()
+        UserMatchTeam.query.delete()
+        PlayerMatchStats.query.delete()
+        UserTeam.query.delete()
+        Match.query.delete()
+        Player.query.delete()
+        db.session.commit()
+        print("✅ Cleared all data")
+
+        # Now seed
         from seed_players import seed_players, seed_matches
         seed_players()
         seed_matches()
-        return "✅ Seeding complete!", 200
+        
+        return "✅ Seeding complete! Remove this route now.", 200
     except Exception as e:
+        db.session.rollback()
         return f"❌ Error: {e}", 500
     
 if __name__ == "__main__":
