@@ -1246,5 +1246,22 @@ def rules():
     from scoring_config import SCORING_CONFIG as c
     return render_template("rules.html", c=c)
 
+@app.route("/admin/run-seed-once")
+@admin_required
+def run_seed_once():
+    import os
+    # Safety key to prevent accidental runs
+    key = request.args.get("key")
+    if key != "seed2026ipl":
+        return "Invalid key", 403
+    
+    try:
+        from seed_players import seed_players, seed_matches
+        seed_players()
+        seed_matches()
+        return "✅ Seeding complete!", 200
+    except Exception as e:
+        return f"❌ Error: {e}", 500
+    
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
