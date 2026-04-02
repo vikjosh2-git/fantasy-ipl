@@ -12,7 +12,6 @@
   OS max {{ rules.max_overseas }} &nbsp;·&nbsp;
   Per team max {{ rules.max_players_per_team }} &nbsp;·&nbsp;
   Budget 100 cr &nbsp;·&nbsp;
-  Transfers left {{ user.transfers_remaining }}
 </div>
 
 <!-- Filters -->
@@ -255,84 +254,84 @@
   </table>
 </div>
 
-<!-- Captain & Vice Captain selection -->
-<div class="card" style="margin-bottom:16px; padding:14px;">
-  <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:center;">
-
-    <div style="flex:1; min-width:180px;">
-      <label style="color:#f5a623; font-size:12px; font-weight:bold;
-                    display:block; margin-bottom:6px;">
-        👑 Captain (2× points)
-      </label>
-      <select id="captainSelect"
-              onchange="setCaptainFromDropdown(this.value, this.options[this.selectedIndex].text)"
-              style="width:100%; padding:8px; font-size:13px; border:1px solid #f5a623;">
-        <option value="">— Select Captain —</option>
-      </select>
-    </div>
-
-    <div style="flex:1; min-width:180px;">
-      <label style="color:#81c784; font-size:12px; font-weight:bold;
-                    display:block; margin-bottom:6px;">
-        🥈 Vice Captain (1.5× points)
-      </label>
-      <select id="vcSelect"
-              onchange="setVCFromDropdown(this.value, this.options[this.selectedIndex].text)"
-              style="width:100%; padding:8px; font-size:13px; border:1px solid #81c784;">
-        <option value="">— Select Vice Captain —</option>
-      </select>
-    </div>
-
-  </div>
-</div>
-
 <!-- Floating bottom bar -->
 <div style="position:fixed; bottom:52px; left:0; right:0; z-index:998;
             background:rgba(16,25,50,0.97); border-top:1px solid #2a3a5a;
             backdrop-filter:blur(6px);">
 
-  <!-- Stats pills row -->
-  <div id="barContent"
-       style="display:flex; justify-content:center; align-items:center;
-              gap:8px; padding:6px 12px; flex-wrap:nowrap; overflow-x:auto;
-              scrollbar-width:none; max-width:900px; margin:0 auto;">
+  <div style="max-width:900px; margin:0 auto; padding:6px 12px;">
 
-    {% macro pill(label, pid, val, col='#f5a623') %}
-    <div style="background:#0d1826; border-radius:6px; padding:4px 12px;
-                text-align:center; flex-shrink:0; min-width:52px;">
-      <div style="color:#556; font-size:9px; letter-spacing:0.5px;
-                  text-transform:uppercase; line-height:1.3;">{{ label }}</div>
-      <div style="font-size:15px; font-weight:bold; color:{{ col }};
-                  line-height:1.4;" id="{{ pid }}">{{ val }}</div>
+    <!-- Stats + C/VC row -->
+    <div id="barContent"
+         style="display:flex; justify-content:center; align-items:center;
+                gap:6px; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none;">
+
+      <!-- Toggle -->
+      <button onclick="toggleBar()" id="barToggle"
+              style="background:#0d1826; border:none; color:#556; font-size:11px;
+                     cursor:pointer; flex-shrink:0; border-radius:6px;
+                     padding:4px 8px; line-height:1.3;">▼</button>
+
+      {% macro pill(label, pid, val, col='#f5a623') %}
+      <div style="background:#0d1826; border-radius:6px; padding:4px 10px;
+                  text-align:center; flex-shrink:0; min-width:48px;">
+        <div style="color:#556; font-size:8px; letter-spacing:0.5px;
+                    text-transform:uppercase; line-height:1.3;">{{ label }}</div>
+        <div style="font-size:14px; font-weight:bold; color:{{ col }};
+                    line-height:1.4;" id="{{ pid }}">{{ val }}</div>
+      </div>
+      {% endmacro %}
+
+      {{ pill('Squad',  'selectedCount', '0/' + rules.team_size|string) }}
+      {{ pill('Budget', 'budgetLeft',    '100cr') }}
+      {{ pill('Trsf',   'transfersLeft', user.transfers_remaining|string, '#81c784') }}
+      {{ pill('OS',     'overseasCount', '0/' + rules.max_overseas|string) }}
+
+      <!-- Divider -->
+      <div style="width:1px; height:28px; background:#2a3a5a; flex-shrink:0;"></div>
+
+      {{ pill('Bat',  'batsmanCount',   '0') }}
+      {{ pill('Bowl', 'bowlerCount',    '0') }}
+      {{ pill('AR',   'allrounderCount','0') }}
+      {{ pill('WK',   'keeperCount',    '0') }}
+
+      <!-- Divider -->
+      <div style="width:1px; height:28px; background:#2a3a5a; flex-shrink:0;"></div>
+
+      <!-- Captain dropdown -->
+      <div style="flex-shrink:0; min-width:130px;">
+        <div style="color:#f5a623; font-size:8px; letter-spacing:0.5px;
+                    text-transform:uppercase; margin-bottom:2px;">👑 Captain</div>
+        <select id="captainSelect"
+                onchange="setCaptainFromDropdown(this.value)"
+                style="width:100%; padding:3px 6px; font-size:11px;
+                       background:#0d1826; color:#f5a623;
+                       border:1px solid #f5a623; border-radius:5px;">
+          <option value="">— Select —</option>
+        </select>
+      </div>
+
+      <!-- VC dropdown -->
+      <div style="flex-shrink:0; min-width:130px;">
+        <div style="color:#81c784; font-size:8px; letter-spacing:0.5px;
+                    text-transform:uppercase; margin-bottom:2px;">🥈 Vice Captain</div>
+        <select id="vcSelect"
+                onchange="setVCFromDropdown(this.value)"
+                style="width:100%; padding:3px 6px; font-size:11px;
+                       background:#0d1826; color:#81c784;
+                       border:1px solid #81c784; border-radius:5px;">
+          <option value="">— Select —</option>
+        </select>
+      </div>
+
     </div>
-    {% endmacro %}
 
-    <!-- Toggle button -->
-    <button onclick="toggleBar()" id="barToggle"
-            style="background:#0d1826; border:none; color:#556;
-                   font-size:11px; cursor:pointer; flex-shrink:0;
-                   border-radius:6px; padding:4px 8px; line-height:1.3;">
-      ▼
-    </button>
+    <!-- Error -->
+    <div id="errorMsg"
+         style="color:#ef5350; font-size:12px; text-align:center;
+                min-height:14px; line-height:1.3; padding-top:2px;">
+    </div>
 
-    {{ pill('Squad',  'selectedCount', '0/' + rules.team_size|string) }}
-    {{ pill('Budget', 'budgetLeft',    '100cr') }}
-    {{ pill('OS',     'overseasCount', '0/' + rules.max_overseas|string) }}
-
-    <!-- Divider -->
-    <div style="width:1px; height:28px; background:#2a3a5a; flex-shrink:0;"></div>
-
-    {{ pill('Bat',  'batsmanCount',   '0') }}
-    {{ pill('Bowl', 'bowlerCount',    '0') }}
-    {{ pill('AR',   'allrounderCount','0') }}
-    {{ pill('WK',   'keeperCount',    '0') }}
-
-  </div>
-
-  <!-- Error -->
-  <div id="errorMsg"
-       style="color:#ef5350; font-size:12px; text-align:center;
-              min-height:14px; line-height:1.3; padding:0 12px 4px;">
   </div>
 </div>
 
@@ -463,20 +462,9 @@
     const tick = document.getElementById("tick-" + id);
     if (!row) return;
     const isSel = selected.includes(id);
-    const isCap = captainId === id;
-    const isVC  = vcId === id;
-    row.style.background =
-      isCap ? "#1a2a0a" :
-      isVC  ? "#0a1a0a" :
-      isSel ? "#0a1826" : "";
-    row.style.borderLeft =
-      isCap ? "3px solid #f5a623" :
-      isVC  ? "3px solid #81c784" :
-      isSel ? "3px solid #4fc3f7" : "";
-    tick.style.display = isSel ? "inline" : "none";
-    tick.style.color   =
-      isCap ? "#f5a623" :
-      isVC  ? "#81c784" : "#4fc3f7";
+    row.style.background  = isSel ? "#0a1826" : "";
+    row.style.borderLeft  = isSel ? "3px solid #4fc3f7" : "";
+    tick.style.display    = isSel ? "inline" : "none";
   }
 
   // ── C/VC dropdown management ────────────────────────────────
