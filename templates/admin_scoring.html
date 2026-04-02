@@ -21,6 +21,22 @@
   {% endmacro %}
 
   <div class="card" style="margin-bottom:20px;">
+    {{ section("⚙️ Season Settings") }}
+    {{ field("season_transfers", "Season Transfers", config.season_transfers) }}
+    {{ field("team_size", "Team Size", config.team_size) }}
+    {{ field("max_overseas", "Max Overseas Players", config.max_overseas) }}
+    {{ field("max_players_per_team", "Max Players Per IPL Team", config.max_players_per_team) }}
+    {{ field("min_batsmen", "Min Batsmen", config.min_batsmen) }}
+    {{ field("max_batsmen", "Max Batsmen", config.max_batsmen) }}
+    {{ field("min_bowlers", "Min Bowlers", config.min_bowlers) }}
+    {{ field("max_bowlers", "Max Bowlers", config.max_bowlers) }}
+    {{ field("min_allrounders", "Min All-Rounders", config.min_allrounders) }}
+    {{ field("max_allrounders", "Max All-Rounders", config.max_allrounders) }}
+    {{ field("min_keepers", "Min Keepers", config.min_keepers) }}
+    {{ field("max_keepers", "Max Keepers", config.max_keepers) }}
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
     {{ section("🎯 Match Bonus") }}
     {{ field("motm", "Man of the Match", config.motm) }}
     {{ field("playing_bonus", "Playing XI Bonus", config.playing_bonus) }}
