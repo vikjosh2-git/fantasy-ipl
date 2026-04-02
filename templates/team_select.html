@@ -3,214 +3,149 @@
 {% block content %}
 <h1 class="page-title">👥 Select Your Team</h1>
 
-<!-- Info Bar -->
-<div style="display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap;
-            position:sticky; top:70px; z-index:999;
-            background:#1a1a2e; padding:12px 0;
-            box-shadow:0 4px 10px rgba(0,0,0,0.4);">
-  
-<div class="card" style="flex:1; min-width:120px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">Selected</div>
-    <div style="font-size:20px; font-weight:bold; color:#f5a623;">
-      <span id="selectedCount">0</span>/{{ rules.team_size }}
-    </div>
-  </div>
-  <div class="card" style="flex:1; min-width:120px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">🌍 Overseas</div>
-    <div style="font-size:20px; font-weight:bold;" id="overseasCount"
-         style="color:#f5a623;">0/{{ rules.max_overseas }}</div>
-  </div>
-  <div class="card" style="flex:1; min-width:120px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">🏏 Bat</div>
-    <div style="font-size:20px; font-weight:bold; color:#f5a623;" id="batsmanCount">0</div>
-  </div>
-  <div class="card" style="flex:1; min-width:120px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">🎯 Bowl</div>
-    <div style="font-size:20px; font-weight:bold; color:#f5a623;" id="bowlerCount">0</div>
-  </div>
-  <div class="card" style="flex:1; min-width:120px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">⚡ AR</div>
-    <div style="font-size:20px; font-weight:bold; color:#f5a623;" id="allrounderCount">0</div>
-  </div>
-  <div class="card" style="flex:1; min-width:120px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">🧤 WK</div>
-    <div style="font-size:20px; font-weight:bold; color:#f5a623;" id="keeperCount">0</div>
-  </div>  
-
-  <div class="card" style="flex:1; min-width:150px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">Budget Left</div>
-    <div style="font-size:22px; font-weight:bold; color:#f5a623;">
-      <span id="budgetLeft">100</span> cr
-    </div>
-  </div>
-  <div class="card" style="flex:1; min-width:150px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">Captain</div>
-    <div style="font-size:15px; font-weight:bold; color:#f5a623;" id="captainName">None</div>
-  </div>
-  <div class="card" style="flex:1; min-width:150px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">Vice Captain</div>
-    <div style="font-size:15px; font-weight:bold; color:#81c784;" id="vcName">None</div>
-  </div>
-  <div class="card" style="flex:1; min-width:150px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">Season Transfers Left</div>
-    <div style="font-size:22px; font-weight:bold; color:#f5a623;">
-      {{ user.transfers_remaining }}
-    </div>
-  </div>
-  <div class="card" style="flex:1; min-width:150px; text-align:center;">
-    <div style="color:#aaa; font-size:12px;">This Window</div>
-    <div style="font-size:22px; font-weight:bold; color:#81c784;">
-      <span id="windowTransfers">0</span> net
-    </div>
-  </div>
-</div>
-
-<!-- Team Rules -->
-<div class="card" style="margin-bottom:20px; padding:14px;">
-  <div style="color:#f5a623; font-size:13px; font-weight:bold; margin-bottom:10px;">
-    📋 Team Formation Rules
-  </div>
-  <div style="display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#aaa;">
-    <span>🏏 Bat: <strong style="color:white;">{{ rules.min_batsmen }}-{{ rules.max_batsmen }}</strong></span>
-    <span>🎯 Bowl: <strong style="color:white;">{{ rules.min_bowlers }}-{{ rules.max_bowlers }}</strong></span>
-    <span>⚡ AR: <strong style="color:white;">{{ rules.min_allrounders }}-{{ rules.max_allrounders }}</strong></span>
-    <span>🧤 WK: <strong style="color:white;">{{ rules.min_keepers }}-{{ rules.max_keepers }}</strong></span>
-    <span>🌍 Overseas: <strong style="color:white;">Max {{ rules.max_overseas }}</strong></span>
-    <span>🏟️ Per Team: <strong style="color:white;">Max {{ rules.max_players_per_team }}</strong></span>
-  </div>
+<!-- Team Rules (static, not floating) -->
+<div style="font-size:11px; color:#555; margin-bottom:16px; line-height:1.8;">
+  Bat {{ rules.min_batsmen }}-{{ rules.max_batsmen }} &nbsp;·&nbsp;
+  Bowl {{ rules.min_bowlers }}-{{ rules.max_bowlers }} &nbsp;·&nbsp;
+  AR {{ rules.min_allrounders }}-{{ rules.max_allrounders }} &nbsp;·&nbsp;
+  WK {{ rules.min_keepers }}-{{ rules.max_keepers }} &nbsp;·&nbsp;
+  OS max {{ rules.max_overseas }} &nbsp;·&nbsp;
+  Per team max {{ rules.max_players_per_team }} &nbsp;·&nbsp;
+  Budget 100 cr &nbsp;·&nbsp;
+  Transfers left {{ user.transfers_remaining }}
 </div>
 
 <!-- Filters -->
-<div class="card" style="margin-bottom:20px; padding:16px;">
-  <div style="display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;">
+<div class="card" style="margin-bottom:16px; padding:12px;">
+  <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
 
-    <!-- Team Filter -->
-    <div>
-      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">IPL Team</div>
-      <select id="teamFilter" onchange="filterPlayers()"
-              style="width:auto; padding:8px; min-width:160px;">
-        <option value="all">All Teams</option>
-        {% set teams = players | map(attribute='ipl_team') | unique | list %}
-        {% for team in teams | sort %}
-        <option value="{{ team }}">{{ team }}</option>
-        {% endfor %}
-      </select>
-    </div>
+    <select id="teamFilter" onchange="filterPlayers()"
+            style="padding:6px 8px; font-size:12px; width:110px; height:32px;">
+      <option value="all">All Teams</option>
+      {% for team in players | map(attribute='ipl_team') | unique | sort %}
+      <option value="{{ team }}">
+        {{ team | replace('Royal Challengers Bengaluru','RCB')
+                | replace('Mumbai Indians','MI')
+                | replace('Chennai Super Kings','CSK')
+                | replace('Kolkata Knight Riders','KKR')
+                | replace('Delhi Capitals','DC')
+                | replace('Rajasthan Royals','RR')
+                | replace('Punjab Kings','PBKS')
+                | replace('Sunrisers Hyderabad','SRH')
+                | replace('Gujarat Titans','GT')
+                | replace('Lucknow Super Giants','LSG') }}
+      </option>
+      {% endfor %}
+    </select>
 
-    <!-- Role Filter -->
-    <div>
-      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">Role</div>
-      <select id="roleFilter" onchange="filterPlayers()"
-              style="width:auto; padding:8px; min-width:140px;">
-        <option value="all">All Roles</option>
-        <option value="keeper">🧤 Keeper</option>
-        <option value="batsman">🏏 Batsman</option>
-        <option value="allrounder">⚡ All Rounder</option>
-        <option value="bowler">🎯 Bowler</option>
-      </select>
-    </div>
+    <select id="roleFilter" onchange="filterPlayers()"
+            style="padding:6px 8px; font-size:12px; width:90px; height:32px;">
+      <option value="all">All Roles</option>
+      <option value="batsman">🏏 BAT</option>
+      <option value="bowler">🎯 BOWL</option>
+      <option value="allrounder">⚡ AR</option>
+      <option value="keeper">🧤 WK</option>
+    </select>
 
-<!-- Credits Range Filter -->
-    <div>
-      <div style="color:#aaa; font-size:12px; margin-bottom:6px;">
-        Max Credits: <span id="creditsVal">11</span>
-      </div>
+    <!-- Credits slider -->
+    <div style="display:flex; align-items:center; gap:6px; height:32px;">
+      <span style="color:#aaa; font-size:12px; white-space:nowrap;">
+        Max Cr: <span id="creditsVal" style="color:#f5a623;">11</span>
+      </span>
       <input type="range" id="creditsFilter" min="7" max="11" value="11" step="0.5"
              oninput="document.getElementById('creditsVal').textContent=this.value; filterPlayers()"
-             style="width:160px; padding:0; margin:0; background:transparent;
-                    accent-color:#f5a623;">
+             style="width:90px; accent-color:#f5a623; padding:0; margin:0; vertical-align:middle;">
     </div>
 
-    <!-- Next Match Filter -->
+    <!-- Divider -->
+    <div style="width:1px; height:24px; background:#333; flex-shrink:0;"></div>
+
     {% if next_match %}
-    <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+    <label style="display:flex; align-items:center; gap:5px; cursor:pointer;
+                  height:32px; white-space:nowrap;">
       <input type="checkbox" id="nextMatchFilter" onchange="filterPlayers()"
-             style="width:auto; margin:0; padding:0; accent-color:#f5a623;">
-      <label for="nextMatchFilter" style="color:#aaa; font-size:13px; cursor:pointer;">
-        Next match only
-        <span style="color:#f5a623; font-size:12px;">
-          ({{ next_match.team1 }} vs {{ next_match.team2 }})
+             style="accent-color:#f5a623; width:13px; height:13px; flex-shrink:0;">
+      <span style="color:#aaa; font-size:12px;">
+        Next
+        <span style="color:#f5a623;">
+          ({{ next_match.team1 | replace('Royal Challengers Bengaluru','RCB')
+             | replace('Mumbai Indians','MI') | replace('Chennai Super Kings','CSK')
+             | replace('Kolkata Knight Riders','KKR') | replace('Delhi Capitals','DC')
+             | replace('Rajasthan Royals','RR') | replace('Punjab Kings','PBKS')
+             | replace('Sunrisers Hyderabad','SRH') | replace('Gujarat Titans','GT')
+             | replace('Lucknow Super Giants','LSG') }}
+          vs
+          {{ next_match.team2 | replace('Royal Challengers Bengaluru','RCB')
+             | replace('Mumbai Indians','MI') | replace('Chennai Super Kings','CSK')
+             | replace('Kolkata Knight Riders','KKR') | replace('Delhi Capitals','DC')
+             | replace('Rajasthan Royals','RR') | replace('Punjab Kings','PBKS')
+             | replace('Sunrisers Hyderabad','SRH') | replace('Gujarat Titans','GT')
+             | replace('Lucknow Super Giants','LSG') }})
         </span>
-      </label>
-    </div>
+      </span>
+    </label>
     {% endif %}
-    
-    <!-- Overseas Filter -->
-    <div style="display:flex; align-items:center; gap:8px;">
-      <input type="checkbox" id="overseasFilter" onchange="filterPlayers()"
-             style="width:auto; margin:0; padding:0; accent-color:#f5a623;">
-      <label for="overseasFilter" style="color:#aaa; font-size:13px; cursor:pointer;">
-        🌍 Overseas only
-      </label>
-    </div>
 
-    <!-- Reset Button -->
-    <div>
-      <button onclick="resetFilters()" class="btn"
-              style="background:#333; color:#aaa; padding:8px 16px; font-size:13px;">
-        Reset Filters
-      </button>
-    </div>
+    <label style="display:flex; align-items:center; gap:5px; cursor:pointer;
+                  height:32px; white-space:nowrap;">
+      <input type="checkbox" id="overseasFilter" onchange="filterPlayers()"
+             style="accent-color:#f5a623; width:13px; height:13px; flex-shrink:0;">
+      <span style="color:#aaa; font-size:12px;">🌍 Overseas</span>
+    </label>
+
+    <button onclick="resetFilters()"
+            style="padding:5px 14px; background:#333; color:#aaa; border:none;
+                   border-radius:6px; font-size:12px; cursor:pointer;
+                   height:32px; white-space:nowrap;">
+      Reset
+    </button>
 
   </div>
 </div>
 
-<!-- Store next match teams as JS variable -->
-<script>
-  const nextMatchTeams = {{ next_match_teams | tojson }};
-  // Team formation rules from config
-  const RULES = {
-    teamSize: {{ rules.team_size }},
-    maxOverseas: {{ rules.max_overseas }},
-    minBatsmen: {{ rules.min_batsmen }},
-    maxBatsmen: {{ rules.max_batsmen }},
-    minBowlers: {{ rules.min_bowlers }},
-    maxBowlers: {{ rules.max_bowlers }},
-    minAllrounders: {{ rules.min_allrounders }},
-    maxAllrounders: {{ rules.max_allrounders }},
-    minKeepers: {{ rules.min_keepers }},
-    maxKeepers: {{ rules.max_keepers }},
-    maxPerTeam: {{ rules.max_players_per_team }},
-  };
-</script>
-
 <!-- Players by Role -->
-{% for role, label, emoji in [('keeper','Wicket Keepers','🧤'), ('batsman','Batsmen','🏏'), ('allrounder','All Rounders','⚡'), ('bowler','Bowlers','🎯')] %}
+{% for role, label, emoji in [('batsman','Batsmen','🏏'), ('bowler','Bowlers','🎯'), ('allrounder','All Rounders','⚡'), ('keeper','Wicket Keepers','🧤')] %}
 <div style="margin-bottom:28px;">
   <h3 style="color:#f5a623; margin-bottom:14px; border-bottom:1px solid #333; padding-bottom:8px;">
     {{ emoji }} {{ label }}
   </h3>
   <div style="display:flex; flex-wrap:wrap; gap:12px;" id="section-{{ role }}">
     {% for p in players if p.role == role %}
-<div class="player-card card" id="card-{{ p.id }}"
+    <div class="player-card card" id="card-{{ p.id }}"
          data-team="{{ p.ipl_team }}"
          data-role="{{ p.role }}"
          data-points="{{ player_points.get(p.id, 0) }}"
          data-credits="{{ p.credits }}"
          data-next-match="{{ 'yes' if p.ipl_team in next_match_teams else 'no' }}"
          data-foreigner="{{ 'true' if p.is_foreigner else 'false' }}"
-
-         style="width:170px; cursor:pointer; border:2px solid transparent; padding:14px; text-align:center;"
+         style="width:155px; cursor:pointer; border:2px solid transparent;
+                padding:12px; text-align:center;"
          onclick="togglePlayer({{ p.id }}, {{ p.credits }}, '{{ p.name }}')">
-      <div style="font-size:13px; font-weight:bold;">
+      <div style="font-size:12px; font-weight:bold; line-height:1.3;">
         {{ p.name }}
         {% if p.is_foreigner %}
         <span style="font-size:10px;" title="Overseas Player">🌍</span>
         {% endif %}
       </div>
-      <div style="color:#aaa; font-size:11px; margin-top:4px;">{{ p.ipl_team }}</div>
-      <div style="color:#f5a623; font-size:13px; margin-top:6px;">💰 {{ p.credits }} cr</div>
-      <div style="color:#81c784; font-size:12px; margin-top:2px;">
+      <div style="color:#aaa; font-size:10px; margin-top:3px;">
+        {{ p.ipl_team | replace('Royal Challengers Bengaluru','RCB')
+           | replace('Mumbai Indians','MI') | replace('Chennai Super Kings','CSK')
+           | replace('Kolkata Knight Riders','KKR') | replace('Delhi Capitals','DC')
+           | replace('Rajasthan Royals','RR') | replace('Punjab Kings','PBKS')
+           | replace('Sunrisers Hyderabad','SRH') | replace('Gujarat Titans','GT')
+           | replace('Lucknow Super Giants','LSG') }}
+      </div>
+      <div style="color:#f5a623; font-size:12px; margin-top:4px;">💰 {{ p.credits }} cr</div>
+      <div style="color:#81c784; font-size:11px; margin-top:2px;">
         📊 {{ player_points.get(p.id, 0) }} pts
-</div>
-
-    <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
+      </div>
+      <div style="display:flex; gap:6px; justify-content:center; margin-top:8px;">
         <span onclick="event.stopPropagation(); setCaptain({{ p.id }}, '{{ p.name }}')"
-              style="background:#f5a623; color:#1a1a2e; padding:2px 8px; border-radius:10px;
-                     font-size:11px; font-weight:bold; cursor:pointer;">C</span>
+              style="background:#f5a623; color:#1a1a2e; padding:2px 8px;
+                     border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;">C</span>
         <span onclick="event.stopPropagation(); setVC({{ p.id }}, '{{ p.name }}')"
-              style="background:#81c784; color:#1a1a2e; padding:2px 8px; border-radius:10px;
-                     font-size:11px; font-weight:bold; cursor:pointer;">VC</span>
+              style="background:#81c784; color:#1a1a2e; padding:2px 8px;
+                     border-radius:10px; font-size:11px; font-weight:bold; cursor:pointer;">VC</span>
       </div>
     </div>
     {% endfor %}
@@ -218,72 +153,107 @@
 </div>
 {% endfor %}
 
-<!-- Submit Bar -->
-<div style="position:fixed; bottom:0; left:0; right:0; background:#16213e;
-            padding:16px; text-align:center; border-top:2px solid #333; z-index:100;">
-  <div id="errorMsg" style="color:#ef5350; margin-bottom:8px; font-size:14px;"></div>
-  
-    <button class="btn btn-primary" onclick="submitTeam()" style="padding:12px 40px; font-size:16px;">
-      Save Team 🏏
+<!-- Floating bottom bar -->
+<div style="position:fixed; bottom:52px; left:0; right:0; z-index:998;
+            background:rgba(16,25,50,0.97); border-top:1px solid #2a3a5a;
+            backdrop-filter:blur(6px);">
+
+  <!-- Stats pills row -->
+  <div id="barContent"
+       style="display:flex; justify-content:center; align-items:center;
+              gap:8px; padding:6px 12px; flex-wrap:nowrap; overflow-x:auto;
+              scrollbar-width:none; max-width:900px; margin:0 auto;">
+
+    {% macro pill(label, pid, val, col='#f5a623') %}
+    <div style="background:#0d1826; border-radius:6px; padding:4px 12px;
+                text-align:center; flex-shrink:0; min-width:52px;">
+      <div style="color:#556; font-size:9px; letter-spacing:0.5px;
+                  text-transform:uppercase; line-height:1.3;">{{ label }}</div>
+      <div style="font-size:15px; font-weight:bold; color:{{ col }};
+                  line-height:1.4;" id="{{ pid }}">{{ val }}</div>
+    </div>
+    {% endmacro %}
+
+    <!-- Toggle button -->
+    <button onclick="toggleBar()" id="barToggle"
+            style="background:#0d1826; border:none; color:#556;
+                   font-size:11px; cursor:pointer; flex-shrink:0;
+                   border-radius:6px; padding:4px 8px; line-height:1.3;">
+      ▼
     </button>
 
+    {{ pill('Squad',  'selectedCount', '0/' + rules.team_size|string) }}
+    {{ pill('Budget', 'budgetLeft',    '100cr') }}
+    {{ pill('OS',     'overseasCount', '0/' + rules.max_overseas|string) }}
+
+    <!-- Divider -->
+    <div style="width:1px; height:28px; background:#2a3a5a; flex-shrink:0;"></div>
+
+    {{ pill('Bat',  'batsmanCount',   '0') }}
+    {{ pill('Bowl', 'bowlerCount',    '0') }}
+    {{ pill('AR',   'allrounderCount','0') }}
+    {{ pill('WK',   'keeperCount',    '0') }}
+
+  </div>
+
+  <!-- Error -->
+  <div id="errorMsg"
+       style="color:#ef5350; font-size:12px; text-align:center;
+              min-height:14px; line-height:1.3; padding:0 12px 4px;">
+  </div>
 </div>
 
-<div style="height:80px;"></div>
+<!-- Save Button (fixed very bottom) -->
+<div style="position:fixed; bottom:0; left:0; right:0; background:#16213e;
+            padding:8px 16px; text-align:center; border-top:1px solid #333;
+            z-index:999;">
+  <button class="btn btn-primary" onclick="submitTeam()"
+          style="padding:8px 40px; font-size:15px;">
+    Save Team 🏏
+  </button>
+</div>
+
+<div style="height:130px;"></div>
 
 <script>
-  let selected = {{ selected_ids | tojson }};
-  let budget = 100;
-  let captainId = {{ captain_id or 'null' }};
-  let vcId = {{ vc_id or 'null' }};
-  let captainName = "None", vcName = "None";
-
-  // Calculate initial budget
-  selected.forEach(id => {
-    const card = document.getElementById("card-" + id);
-    if (card) {
-      const credits = parseFloat(card.querySelector("[data-credits]")?.dataset.credits ||
-        card.innerText.match(/💰 ([\d.]+)/)?.[1] || 0);
-      budget -= credits;
-    }
-  });
-
-  // Init UI
-  window.onload = function() {
-    selected.forEach(id => {
-      const card = document.getElementById("card-" + id);
-      if (card) card.style.borderColor = "#4fc3f7";
-    });
-    if (captainId) {
-      const card = document.getElementById("card-" + captainId);
-      if (card) {
-        card.style.borderColor = "#f5a623";
-        captainName = card.querySelector("div").innerText;
-      }
-    }
-    if (vcId) {
-      const card = document.getElementById("card-" + vcId);
-      if (card) {
-        card.style.borderColor = "#81c784";
-        vcName = card.querySelector("div").innerText;
-      }
-    }
-    updateBar();
+  const nextMatchTeams = {{ next_match_teams | tojson }};
+  const RULES = {
+    teamSize:      {{ rules.team_size }},
+    maxOverseas:   {{ rules.max_overseas }},
+    minBatsmen:    {{ rules.min_batsmen }},
+    maxBatsmen:    {{ rules.max_batsmen }},
+    minBowlers:    {{ rules.min_bowlers }},
+    maxBowlers:    {{ rules.max_bowlers }},
+    minAllrounders:{{ rules.min_allrounders }},
+    maxAllrounders:{{ rules.max_allrounders }},
+    minKeepers:    {{ rules.min_keepers }},
+    maxKeepers:    {{ rules.max_keepers }},
+    maxPerTeam:    {{ rules.max_players_per_team }},
   };
 
-  function getCredits(id) {
-    const card = document.getElementById("card-" + id);
-    const match = card.innerText.match(/💰 ([\d.]+)/);
-    return match ? parseFloat(match[1]) : 0;
+  let selected    = {{ selected_ids | tojson }};
+  let budget      = 100;
+  let captainId   = {{ captain_id or 'null' }};
+  let vcId        = {{ vc_id or 'null' }};
+  let captainName = "None";
+  let vcName      = "None";
+  let barExpanded = true;
+
+  function toggleBar() {
+    barExpanded = !barExpanded;
+    document.getElementById("barContent").style.display =
+      barExpanded ? "flex" : "none";
+    document.getElementById("barToggle").textContent =
+      barExpanded ? "▼" : "▲";
   }
 
   function getCardInfo(id) {
     const card = document.getElementById("card-" + id);
     return {
-      role: card.dataset.role,
-      team: card.dataset.team,
-      foreigner: card.dataset.foreigner === "true",
-      credits: parseFloat(card.innerText.match(/💰 ([\d.]+)/)?.[1] || 0)
+      role:     card.dataset.role,
+      team:     card.dataset.team,
+      foreigner:card.dataset.foreigner === "true",
+      credits:  parseFloat(card.dataset.credits || 0)
     };
   }
 
@@ -292,10 +262,10 @@
     const teamCounts = {};
     selected.forEach(id => {
       const info = getCardInfo(id);
-      if (info.role === "batsman") batsmen++;
-      else if (info.role === "bowler") bowlers++;
+      if (info.role === "batsman")    batsmen++;
+      else if (info.role === "bowler")     bowlers++;
       else if (info.role === "allrounder") allrounders++;
-      else if (info.role === "keeper") keepers++;
+      else if (info.role === "keeper")     keepers++;
       if (info.foreigner) overseas++;
       teamCounts[info.team] = (teamCounts[info.team] || 0) + 1;
     });
@@ -303,54 +273,43 @@
   }
 
   function togglePlayer(id, credits, name) {
-    const info = getCardInfo(id);
-    const card = document.getElementById("card-" + id);
+    const info   = getCardInfo(id);
+    const card   = document.getElementById("card-" + id);
     const counts = getCounts();
 
     if (selected.includes(id)) {
-      // Deselect
       selected = selected.filter(x => x !== id);
       budget += credits;
       card.style.borderColor = "transparent";
       if (captainId === id) { captainId = null; captainName = "None"; }
-      if (vcId === id) { vcId = null; vcName = "None"; }
+      if (vcId     === id) { vcId     = null; vcName      = "None"; }
     } else {
-      // Validate before adding
       if (selected.length >= RULES.teamSize) {
-        showError(`You can only select ${RULES.teamSize} players!`); return;
-      }
+        showError(`Max ${RULES.teamSize} players!`); return; }
       if (budget < credits) {
-        showError("Not enough budget!"); return;
-      }
+        showError("Not enough budget!"); return; }
       if (info.foreigner && counts.overseas >= RULES.maxOverseas) {
-        showError(`Max ${RULES.maxOverseas} overseas players allowed!`); return;
-      }
-      if (info.role === "batsman" && counts.batsmen >= RULES.maxBatsmen) {
-        showError(`Max ${RULES.maxBatsmen} batsmen allowed!`); return;
-      }
-      if (info.role === "bowler" && counts.bowlers >= RULES.maxBowlers) {
-        showError(`Max ${RULES.maxBowlers} bowlers allowed!`); return;
-      }
+        showError(`Max ${RULES.maxOverseas} overseas!`); return; }
+      if (info.role === "batsman"    && counts.batsmen    >= RULES.maxBatsmen) {
+        showError(`Max ${RULES.maxBatsmen} batsmen!`); return; }
+      if (info.role === "bowler"     && counts.bowlers    >= RULES.maxBowlers) {
+        showError(`Max ${RULES.maxBowlers} bowlers!`); return; }
       if (info.role === "allrounder" && counts.allrounders >= RULES.maxAllrounders) {
-        showError(`Max ${RULES.maxAllrounders} all-rounders allowed!`); return;
-      }
-      if (info.role === "keeper" && counts.keepers >= RULES.maxKeepers) {
-        showError(`Max ${RULES.maxKeepers} wicket-keepers allowed!`); return;
-      }
+        showError(`Max ${RULES.maxAllrounders} all-rounders!`); return; }
+      if (info.role === "keeper"     && counts.keepers    >= RULES.maxKeepers) {
+        showError(`Max ${RULES.maxKeepers} keepers!`); return; }
       if ((counts.teamCounts[info.team] || 0) >= RULES.maxPerTeam) {
-        showError(`Max ${RULES.maxPerTeam} players from same team allowed!`); return;
-      }
-
+        showError(`Max ${RULES.maxPerTeam} from same team!`); return; }
       selected.push(id);
       budget -= credits;
       card.style.borderColor = "#4fc3f7";
     }
     updateBar();
   }
-  
+
   function setCaptain(id, name) {
-    if (!selected.includes(id)) { showError("Select the player first!"); return; }
-    if (vcId === id) { showError("Already set as Vice Captain!"); return; }
+    if (!selected.includes(id)) { showError("Select player first!"); return; }
+    if (vcId === id) { showError("Already VC!"); return; }
     if (captainId) document.getElementById("card-" + captainId).style.borderColor = "#4fc3f7";
     captainId = id; captainName = name;
     document.getElementById("card-" + id).style.borderColor = "#f5a623";
@@ -358,8 +317,8 @@
   }
 
   function setVC(id, name) {
-    if (!selected.includes(id)) { showError("Select the player first!"); return; }
-    if (captainId === id) { showError("Already set as Captain!"); return; }
+    if (!selected.includes(id)) { showError("Select player first!"); return; }
+    if (captainId === id) { showError("Already Captain!"); return; }
     if (vcId) document.getElementById("card-" + vcId).style.borderColor = "#4fc3f7";
     vcId = id; vcName = name;
     document.getElementById("card-" + id).style.borderColor = "#81c784";
@@ -368,109 +327,127 @@
 
   function updateBar() {
     const counts = getCounts();
-    document.getElementById("selectedCount").textContent = selected.length;
-    document.getElementById("budgetLeft").textContent = budget.toFixed(1);
-    document.getElementById("captainName").textContent = captainName;
-    document.getElementById("vcName").textContent = vcName;
+    document.getElementById("selectedCount").textContent =
+      `${selected.length}/${RULES.teamSize}`;
+    document.getElementById("budgetLeft").textContent =
+      `${budget.toFixed(1)}cr`;
 
-    // Update role counts with color coding
-    const overseasEl = document.getElementById("overseasCount");
-    overseasEl.textContent = `${counts.overseas}/${RULES.maxOverseas}`;
-    overseasEl.style.color = counts.overseas >= RULES.maxOverseas ? "#ef5350" : "#f5a623";
+    const os = document.getElementById("overseasCount");
+    os.textContent  = `${counts.overseas}/${RULES.maxOverseas}`;
+    os.style.color  = counts.overseas >= RULES.maxOverseas ? "#ef5350" : "#f5a623";
 
-    const batEl = document.getElementById("batsmanCount");
-    batEl.textContent = counts.batsmen;
-    batEl.style.color = counts.batsmen < RULES.minBatsmen ? "#ef5350" : "#43a047";
+    const bat = document.getElementById("batsmanCount");
+    bat.textContent = counts.batsmen;
+    bat.style.color = counts.batsmen < RULES.minBatsmen ? "#ef5350" : "#43a047";
 
-    const bowlEl = document.getElementById("bowlerCount");
-    bowlEl.textContent = counts.bowlers;
-    bowlEl.style.color = counts.bowlers < RULES.minBowlers ? "#ef5350" : "#43a047";
+    const bowl = document.getElementById("bowlerCount");
+    bowl.textContent = counts.bowlers;
+    bowl.style.color = counts.bowlers < RULES.minBowlers ? "#ef5350" : "#43a047";
 
-    const arEl = document.getElementById("allrounderCount");
-    arEl.textContent = counts.allrounders;
-    arEl.style.color = counts.allrounders < RULES.minAllrounders ? "#ef5350" : "#43a047";
+    const ar = document.getElementById("allrounderCount");
+    ar.textContent = counts.allrounders;
+    ar.style.color = counts.allrounders < RULES.minAllrounders ? "#ef5350" : "#43a047";
 
-    const wkEl = document.getElementById("keeperCount");
-    wkEl.textContent = counts.keepers;
-    wkEl.style.color = counts.keepers < RULES.minKeepers ? "#ef5350" : "#43a047";
+    const wk = document.getElementById("keeperCount");
+    wk.textContent = counts.keepers;
+    wk.style.color = counts.keepers < RULES.minKeepers ? "#ef5350" : "#43a047";
 
     document.getElementById("errorMsg").textContent = "";
   }
 
   function showError(msg) {
     document.getElementById("errorMsg").textContent = msg;
+    setTimeout(() => {
+      if (document.getElementById("errorMsg").textContent === msg)
+        document.getElementById("errorMsg").textContent = "";
+    }, 3000);
   }
 
   function filterPlayers() {
-      const team = document.getElementById("teamFilter").value;
-      const role = document.getElementById("roleFilter").value;
-      const maxCredits = parseFloat(document.getElementById("creditsFilter").value);
-      const nextMatchOnly = document.getElementById("nextMatchFilter")?.checked || false;
-      const overseasOnly = document.getElementById("overseasFilter")?.checked || false;
+    const team     = document.getElementById("teamFilter").value;
+    const role     = document.getElementById("roleFilter").value;
+    const maxCr    = parseFloat(document.getElementById("creditsFilter").value);
+    const nextOnly = document.getElementById("nextMatchFilter")?.checked || false;
+    const osOnly   = document.getElementById("overseasFilter")?.checked || false;
 
-      document.querySelectorAll(".player-card").forEach(card => {
-        const matchTeam = team === "all" || card.dataset.team === team;
-        const matchRole = role === "all" || card.dataset.role === role;
-        const matchCredits = parseFloat(card.dataset.credits || 12) <= maxCredits;
-        const matchNext = !nextMatchOnly || card.dataset.nextMatch === "yes";
-        const matchOverseas = !overseasOnly || card.dataset.foreigner === "true";
+    document.querySelectorAll(".player-card").forEach(card => {
+      const show =
+        (team   === "all" || card.dataset.team      === team) &&
+        (role   === "all" || card.dataset.role      === role) &&
+        parseFloat(card.dataset.credits || 12)     <= maxCr  &&
+        (!nextOnly || card.dataset.nextMatch        === "yes") &&
+        (!osOnly   || card.dataset.foreigner        === "true");
+      card.style.display = show ? "" : "none";
+    });
+  }
 
-        card.style.display = (matchTeam && matchRole && matchCredits && matchNext && matchOverseas)
-          ? "block" : "none";
-      });
-    }
-
-function resetFilters() {
-    document.getElementById("teamFilter").value = "all";
-    document.getElementById("roleFilter").value = "all";
-    document.getElementById("creditsFilter").value = 12;
-    document.getElementById("creditsVal").textContent = "12";
-    const nextFilter = document.getElementById("nextMatchFilter");
-    if (nextFilter) nextFilter.checked = false;
-    const overseasFilter = document.getElementById("overseasFilter");
-    if (overseasFilter) overseasFilter.checked = false;
+  function resetFilters() {
+    document.getElementById("teamFilter").value    = "all";
+    document.getElementById("roleFilter").value    = "all";
+    document.getElementById("creditsFilter").value = 11;
+    document.getElementById("creditsVal").textContent = "11";
+    const nf = document.getElementById("nextMatchFilter");
+    if (nf) nf.checked = false;
+    const of = document.getElementById("overseasFilter");
+    if (of) of.checked = false;
     filterPlayers();
   }
-    function submitTeam() {
+
+  function submitTeam() {
     if (selected.length !== RULES.teamSize) {
-      showError(`Please select exactly ${RULES.teamSize} players!`); return;
-    }
-    if (!captainId) { showError("Please select a Captain!"); return; }
-    if (!vcId) { showError("Please select a Vice Captain!"); return; }
-
+      showError(`Select exactly ${RULES.teamSize} players!`); return; }
+    if (!captainId) { showError("Select a Captain!"); return; }
+    if (!vcId)      { showError("Select a Vice Captain!"); return; }
     const counts = getCounts();
-
-    if (counts.batsmen < RULES.minBatsmen) {
-      showError(`Need at least ${RULES.minBatsmen} batsmen! You have ${counts.batsmen}.`); return;
-    }
-    if (counts.bowlers < RULES.minBowlers) {
-      showError(`Need at least ${RULES.minBowlers} bowlers! You have ${counts.bowlers}.`); return;
-    }
+    if (counts.batsmen    < RULES.minBatsmen)    {
+      showError(`Need ${RULES.minBatsmen}+ batsmen!`); return; }
+    if (counts.bowlers    < RULES.minBowlers)    {
+      showError(`Need ${RULES.minBowlers}+ bowlers!`); return; }
     if (counts.allrounders < RULES.minAllrounders) {
-      showError(`Need at least ${RULES.minAllrounders} all-rounder! You have ${counts.allrounders}.`); return;
-    }
-    if (counts.keepers < RULES.minKeepers) {
-      showError(`Need at least ${RULES.minKeepers} wicket-keeper! You have ${counts.keepers}.`); return;
-    }
+      showError(`Need ${RULES.minAllrounders}+ all-rounder!`); return; }
+    if (counts.keepers    < RULES.minKeepers)    {
+      showError(`Need ${RULES.minKeepers}+ keeper!`); return; }
 
     fetch("/save-team", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        player_ids: selected,
-        captain_id: captainId,
+        player_ids:      selected,
+        captain_id:      captainId,
         vice_captain_id: vcId
       })
     })
     .then(r => r.json())
     .then(data => {
-      if (data.success) {
-        window.location.href = "/dashboard";
-      } else {
-        showError(data.message);
-      }
+      if (data.success) window.location.href = "/dashboard";
+      else showError(data.message);
     });
   }
 
+  // Init on load
+  window.onload = function () {
+    selected.forEach(id => {
+      const card = document.getElementById("card-" + id);
+      if (card) {
+        budget -= parseFloat(card.dataset.credits || 0);
+        card.style.borderColor = "#4fc3f7";
+      }
+    });
+    if (captainId) {
+      const card = document.getElementById("card-" + captainId);
+      if (card) {
+        captainName = card.querySelector("div").innerText.replace("🌍","").trim();
+        card.style.borderColor = "#f5a623";
+      }
+    }
+    if (vcId) {
+      const card = document.getElementById("card-" + vcId);
+      if (card) {
+        vcName = card.querySelector("div").innerText.replace("🌍","").trim();
+        card.style.borderColor = "#81c784";
+      }
+    }
+    updateBar();
+  };
 </script>
 {% endblock %}
