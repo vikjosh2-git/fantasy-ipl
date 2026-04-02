@@ -187,13 +187,9 @@ def select_team():
         player_points[player.id] = round(sum(s.points_earned for s in stats), 1)
 
     # sSort players:
-    # Role order: batsman first, bowler second, allrounder third, keeper last
-    # Within role: selected first, then highest points, then highest credits
-    role_order = {"batsman": 0, "bowler": 1, "allrounder": 2, "keeper": 3}
     selected_set = set(selected_ids)
 
     players.sort(key=lambda p: (
-        role_order.get(p.role, 99),           # Role group
         0 if p.id in selected_set else 1,     # Selected first
         -player_points.get(p.id, 0),          # Highest points first
         -p.credits                             # Highest credits first
