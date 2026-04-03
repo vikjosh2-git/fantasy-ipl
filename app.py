@@ -646,9 +646,15 @@ def admin_match(match_id):
 
 @app.route("/transfers")
 def transfers():
+    
     if "user_id" not in session:
         return redirect(url_for("login"))
     user = User.query.get(session["user_id"])
+
+#temp code start 
+    raw_count = TransferHistory.query.filter_by(user_id=user.id).count()    
+    flash(f"Debug: {raw_count} transfer records found for user {user.id}", "info")
+#temp code end
 
     # Get all transfer history with player and match details
     history = db.session.query(
@@ -660,6 +666,10 @@ def transfers():
     ).filter(
         TransferHistory.user_id == user.id
     ).order_by(TransferHistory.transferred_at.desc()).all()
+
+   #temp code start
+    flash(f"Debug: query returned {len(history)} joined rows", "info")
+   #temp code end
 
     # Group by window
     windows = {}
