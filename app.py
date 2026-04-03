@@ -186,6 +186,19 @@ def select_team():
         stats = PlayerMatchStats.query.filter_by(player_id=player.id).all()
         player_points[player.id] = round(sum(s.points_earned for s in stats), 1)
 
+# Calculate matches until next game for each player
+    upcoming_matches = Match.query.filter_by(status="upcoming").order_by(Match.match_date).all()
+    
+    player_next_match = {}  # player_id -> matches until next game (0 = plays next)
+    for player in players:
+        for i, match in enumerate(upcoming_matches):
+            if player.ipl_team in [match.team1, match.team2]:
+                player_next_match[player.id] = i  # 0 = next match, 1 = after 1, etc.
+                break
+        # If not found in upcoming matches, player has no more games
+        if player.id not in player_next_match:
+            player_next_match[player.id] = 99
+
     # sSort players:
     selected_set = set(selected_ids)
 
@@ -217,6 +230,7 @@ def select_team():
                            any_match_started=any_match_started,
                            next_match=next_match,
                            next_match_teams=next_match_teams,
+                           player_next_match=player_next_match,
                            player_points=player_points,
                            rules=rules)
 
@@ -663,8 +677,10 @@ def transfers():
             "transferred_at": transfer.transferred_at
         })
 
+    from scoring_config import SCORING_CONFIG
     return render_template("transfers.html", user=user,
-                           windows=windows.values())
+                           windows=windows.values(),
+                           season_transfers=SCORING_CONFIG["season_transfers"])
 
 @app.route("/players")
 def player_stats():
