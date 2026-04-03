@@ -655,7 +655,7 @@ def transfers():
         TransferHistory, Player, Match
     ).join(
         Player, TransferHistory.player_in_id == Player.id
-    ).join(
+    ).outerjoin(
         Match, TransferHistory.window_match_id == Match.id
     ).filter(
         TransferHistory.user_id == user.id
