@@ -512,24 +512,9 @@ def process_match(match_id):
     return redirect(url_for("matches"))
 
 def snapshot_teams_for_match(match_id):
-    """Save a snapshot of every user's current team for this match."""
-    all_users = User.query.all()
-    for user in all_users:
-        team = UserTeam.query.filter_by(user_id=user.id).first()
-        if not team:
-            continue
-        existing = UserMatchTeam.query.filter_by(
-            user_id=user.id, match_id=match_id).first()
-        if not existing:
-            snapshot = UserMatchTeam(
-                user_id=user.id,
-                match_id=match_id,
-                player_ids=team.player_ids,
-                captain_id=team.captain_id,
-                vice_captain_id=team.vice_captain_id
-            )
-            db.session.add(snapshot)
-    db.session.commit()
+    """Only update existing snapshots — never create new ones.
+    New snapshots are created by the scheduler when match goes live."""
+    pass
 
 @app.route("/my-points")
 def my_points():
@@ -627,7 +612,11 @@ def admin_match(match_id):
 
         # Recalculate user points whenever stats change
         if new_status == "completed" or action == "recalculate":
-            recalculate_user_points(match_id, snapshot_teams_for_match)
+            count = recalculate_user_points(match_id)
+            if count == 0:
+                flash("⚠️ No user snapshots found! Make sure match was set "
+                      "to Live first so the scheduler could snapshot teams.", 
+                      "warning")
 
         if action == "recalculate":
             flash("🔄 Selected players recalculated successfully!", "success")
@@ -842,96 +831,163 @@ def player_stats():
                            my_player_ids=my_player_ids)
 
 @app.route("/league/<int:league_id>/compare/<int:opponent_id>")
-def compare_teams(league_id, opponent_id):
+@app.route("/league/<int:league_id>/compare/<int:opponent_id>/<int:selected_match_id>")
+def compare_teams(league_id, opponent_id, selected_match_id=None):
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    user = User.query.get(session["user_id"])
+    user     = User.query.get(session["user_id"])
     opponent = User.query.get(opponent_id)
-    league = League.query.get(league_id)
+    league   = League.query.get(league_id)
 
-    # Verify both users are in the league
-    user_member = LeagueMember.query.filter_by(
-        league_id=league_id, user_id=user.id).first()
-    opponent_member = LeagueMember.query.filter_by(
-        league_id=league_id, user_id=opponent_id).first()
-    if not user_member or not opponent_member:
+    if not LeagueMember.query.filter_by(league_id=league_id, user_id=user.id).first() or \
+       not LeagueMember.query.filter_by(league_id=league_id, user_id=opponent_id).first():
         flash("Both users must be in the league!", "error")
         return redirect(url_for("league_detail", league_id=league_id))
 
-    # Get all completed matches
+    all_members = db.session.query(User).join(
+        LeagueMember, User.id == LeagueMember.user_id
+    ).filter(
+        LeagueMember.league_id == league_id,
+        User.id != user.id
+    ).all()
+
     completed_matches = Match.query.filter_by(
-        status="completed").order_by(Match.match_date.desc()).all()
+        status="completed").order_by(Match.match_date).all()
 
-    # Get match scores for both users
-    match_data = []
-    user_total = 0
+    if not selected_match_id and completed_matches:
+        selected_match_id = completed_matches[-1].id
+
+    selected_match = Match.query.get(selected_match_id) if selected_match_id else None
+
+    # Season totals and trend data
+    user_total     = 0
     opponent_total = 0
-    user_best = 0
-    opponent_best = 0
+    season_summary = []
 
-    for match in completed_matches:
-        user_score = UserMatchTeam.query.filter_by(
-            user_id=user.id, match_id=match.id).first()
-        opponent_score = UserMatchTeam.query.filter_by(
-            user_id=opponent_id, match_id=match.id).first()
-
-        user_pts = user_score.points_scored if user_score else 0
-        opponent_pts = opponent_score.points_scored if opponent_score else 0
-
-        user_total += user_pts
-        opponent_total += opponent_pts
-        user_best = max(user_best, user_pts)
-        opponent_best = max(opponent_best, opponent_pts)
-
-        # Get user's team for this match
-        user_players = []
-        if user_score:
-            pid_list = [int(x) for x in user_score.player_ids.split(",") if x.strip()]
-            user_players = Player.query.filter(Player.id.in_(pid_list)).all()
-
-        # Get opponent's team for this match
-        opponent_players = []
-        if opponent_score:
-            pid_list = [int(x) for x in opponent_score.player_ids.split(",") if x.strip()]
-            opponent_players = Player.query.filter(Player.id.in_(pid_list)).all()
-
-        # Get player points for this match
-        player_points = {}
-        stats = PlayerMatchStats.query.filter_by(match_id=match.id).all()
-        for s in stats:
-            player_points[s.player_id] = s.points_earned
-
-        match_data.append({
-            "match": match,
-            "user_pts": user_pts,
-            "opponent_pts": opponent_pts,
-            "winner": "user" if user_pts > opponent_pts else
-                      "opponent" if opponent_pts > user_pts else "draw",
-            "user_players": user_players,
-            "opponent_players": opponent_players,
-            "player_points": player_points,
-            "user_captain_id": user_score.captain_id if user_score else None,
-            "user_vc_id": user_score.vice_captain_id if user_score else None,
-            "opponent_captain_id": opponent_score.captain_id if opponent_score else None,
-            "opponent_vc_id": opponent_score.vice_captain_id if opponent_score else None,
+    for m in completed_matches:
+        us = UserMatchTeam.query.filter_by(user_id=user.id,     match_id=m.id).first()
+        os = UserMatchTeam.query.filter_by(user_id=opponent_id, match_id=m.id).first()
+        u_pts = us.points_scored if us else 0
+        o_pts = os.points_scored if os else 0
+        user_total     += u_pts
+        opponent_total += o_pts
+        season_summary.append({
+            "match":        m,
+            "user_pts":     round(u_pts, 1),
+            "opponent_pts": round(o_pts, 1),
         })
 
-    # Head to head record
-    user_wins = sum(1 for m in match_data if m["winner"] == "user")
-    opponent_wins = sum(1 for m in match_data if m["winner"] == "opponent")
-    draws = sum(1 for m in match_data if m["winner"] == "draw")
+    user_total     = round(user_total, 1)
+    opponent_total = round(opponent_total, 1)
+
+    # Selected match detail
+    match_detail = None
+    if selected_match:
+        user_snap     = UserMatchTeam.query.filter_by(
+            user_id=user.id, match_id=selected_match.id).first()
+        opponent_snap = UserMatchTeam.query.filter_by(
+            user_id=opponent_id, match_id=selected_match.id).first()
+
+        user_pts     = user_snap.points_scored     if user_snap     else 0
+        opponent_pts = opponent_snap.points_scored if opponent_snap else 0
+
+        player_points = {s.player_id: s.points_earned
+                         for s in PlayerMatchStats.query.filter_by(
+                             match_id=selected_match.id).all()}
+
+        # Build player lists
+        user_pids = [int(x) for x in user_snap.player_ids.split(",")
+                     if x.strip()] if user_snap else []
+        opp_pids  = [int(x) for x in opponent_snap.player_ids.split(",")
+                     if x.strip()] if opponent_snap else []
+
+        user_player_map = {p.id: p for p in
+                           Player.query.filter(Player.id.in_(user_pids)).all()}
+        opp_player_map  = {p.id: p for p in
+                           Player.query.filter(Player.id.in_(opp_pids)).all()}
+
+        user_cap_id  = user_snap.captain_id      if user_snap else None
+        user_vc_id   = user_snap.vice_captain_id if user_snap else None
+        opp_cap_id   = opponent_snap.captain_id      if opponent_snap else None
+        opp_vc_id    = opponent_snap.vice_captain_id if opponent_snap else None
+
+        # Sort: C first, VC second, common players, then unique players
+        common_ids   = set(user_pids) & set(opp_pids)
+        user_unique  = set(user_pids) - common_ids
+        opp_unique   = set(opp_pids)  - common_ids
+
+        def sort_key(pid, cap_id, vc_id):
+            if pid == cap_id: return 0
+            if pid == vc_id:  return 1
+            if pid in common_ids: return 2
+            return 3
+
+        sorted_user_pids = sorted(user_pids,
+            key=lambda pid: sort_key(pid, user_cap_id, user_vc_id))
+        sorted_opp_pids  = sorted(opp_pids,
+            key=lambda pid: sort_key(pid, opp_cap_id, opp_vc_id))
+
+        # Build paired rows for common players, separate for unique
+        # Rows: (user_player_or_None, opp_player_or_None, is_common)
+        paired_rows = []
+
+        # C and VC first (always shown at top)
+        for uid, oid in [(user_cap_id, opp_cap_id),
+                         (user_vc_id,  opp_vc_id)]:
+            up = user_player_map.get(uid)
+            op = opp_player_map.get(oid)
+            paired_rows.append({"user_player": up, "opp_player": op,
+                                 "type": "cv"})
+
+        # Common players (excluding C/VC already shown)
+        shown_user = {user_cap_id, user_vc_id}
+        shown_opp  = {opp_cap_id,  opp_vc_id}
+        for pid in common_ids:
+            if pid in shown_user:
+                continue
+            up = user_player_map.get(pid)
+            op = opp_player_map.get(pid)
+            paired_rows.append({"user_player": up, "opp_player": op,
+                                 "type": "common"})
+            shown_user.add(pid)
+            shown_opp.add(pid)
+
+        # Unique players — pair them side by side where possible
+        u_unique_list = [user_player_map[p] for p in user_pids
+                         if p not in shown_user and p in user_player_map]
+        o_unique_list = [opp_player_map[p]  for p in opp_pids
+                         if p not in shown_opp  and p in opp_player_map]
+        max_unique = max(len(u_unique_list), len(o_unique_list))
+        for i in range(max_unique):
+            up = u_unique_list[i] if i < len(u_unique_list) else None
+            op = o_unique_list[i] if i < len(o_unique_list) else None
+            paired_rows.append({"user_player": up, "opp_player": op,
+                                 "type": "unique"})
+
+        match_detail = {
+            "match":        selected_match,
+            "user_pts":     round(user_pts, 1),
+            "opponent_pts": round(opponent_pts, 1),
+            "paired_rows":  paired_rows,
+            "player_points": player_points,
+            "user_cap_id":  user_cap_id,
+            "user_vc_id":   user_vc_id,
+            "opp_cap_id":   opp_cap_id,
+            "opp_vc_id":    opp_vc_id,
+        }
 
     return render_template("compare_teams.html",
                            user=user, opponent=opponent,
-                           league=league, match_data=match_data,
+                           league=league,
+                           all_members=all_members,
+                           completed_matches=completed_matches,
+                           selected_match=selected_match,
+                           match_detail=match_detail,
+                           season_summary=season_summary,
                            user_total=user_total,
                            opponent_total=opponent_total,
-                           user_best=user_best,
-                           opponent_best=opponent_best,
-                           user_wins=user_wins,
-                           opponent_wins=opponent_wins,
-                           draws=draws)
+                           selected_match_id=selected_match_id)
 
 import csv
 import io
@@ -1017,7 +1073,7 @@ def upload_csv():
     db.session.commit()
 
     # Calculate user points and mark completed
-    recalculate_user_points(match.id, snapshot_teams_for_match)
+    recalculate_user_points(match.id)
     match.status = "completed"
     db.session.commit()
 
@@ -1177,7 +1233,7 @@ def scrape_confirm():
         success_count += 1
 
     db.session.commit()
-    recalculate_user_points(match.id, snapshot_teams_for_match)
+    recalculate_user_points(match.id)
     match.status = "completed"
     db.session.commit()
 

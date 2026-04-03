@@ -2,9 +2,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timezone, timedelta
 
 def update_match_statuses(app):
-    """Check and update match statuses based on current time."""
     with app.app_context():
-        from database import db, Match
+        from database import db, Match, User, UserTeam, UserMatchTeam
         now = datetime.now(timezone.utc)
         ist = timezone(timedelta(hours=5, minutes=30))
         changed = 0
@@ -23,6 +22,30 @@ def update_match_statuses(app):
                 print(f"🟢 Match {match.match_number} LIVE: "
                       f"{match.team1} vs {match.team2}")
 
+                # ── Snapshot teams at match start ──────────────
+                snapshot_count = 0
+                all_users = User.query.all()
+                for user in all_users:
+                    team = UserTeam.query.filter_by(user_id=user.id).first()
+                    if not team or not team.player_ids:
+                        continue
+                    # Only snapshot if user had a team BEFORE match started
+                    existing = UserMatchTeam.query.filter_by(
+                        user_id=user.id, match_id=match.id
+                    ).first()
+                    if not existing:
+                        snapshot = UserMatchTeam(
+                            user_id=user.id,
+                            match_id=match.id,
+                            player_ids=team.player_ids,
+                            captain_id=team.captain_id,
+                            vice_captain_id=team.vice_captain_id
+                        )
+                        db.session.add(snapshot)
+                        snapshot_count += 1
+                print(f"📸 {snapshot_count} team snapshots created for "
+                      f"Match {match.match_number}")
+
             elif match.status == "live" and now >= match_end:
                 match.status = "completed"
                 changed += 1
@@ -32,21 +55,15 @@ def update_match_statuses(app):
         if changed:
             db.session.commit()
 
-        # Reschedule next check based on upcoming matches
         reschedule_next_check(app)
 
 def reschedule_next_check(app):
-    """Schedule next run exactly when needed."""
     with app.app_context():
         from database import Match
         from apscheduler.triggers.date import DateTrigger
 
         ist = timezone(timedelta(hours=5, minutes=30))
         now = datetime.now(timezone.utc)
-
-        # Find all trigger times we care about:
-        # 1. Match start times (upcoming → live)
-        # 2. Match end times (live → completed) = start + 3.5 hours
         trigger_times = []
 
         upcoming = Match.query.filter_by(status="upcoming").all()
@@ -66,36 +83,28 @@ def reschedule_next_check(app):
             print("📅 No upcoming matches — scheduler idle")
             return
 
-        # Next trigger = earliest future time
-        next_run = min(trigger_times)
-        # Add 2 min buffer to ensure match has actually started
-        next_run_with_buffer = next_run + timedelta(minutes=2)
-
+        next_run = min(trigger_times) + timedelta(minutes=2)
         try:
             scheduler_instance.reschedule_job(
                 "match_status_updater",
-                trigger=DateTrigger(run_date=next_run_with_buffer)
+                trigger=DateTrigger(run_date=next_run)
             )
-            ist_display = next_run_with_buffer.astimezone(ist)
-            print(f"⏰ Next status check scheduled at: "
+            ist_display = next_run.astimezone(ist)
+            print(f"⏰ Next check at: "
                   f"{ist_display.strftime('%b %d %I:%M %p')} IST")
         except Exception as e:
             print(f"⚠️ Reschedule error: {e}")
 
-# Global reference needed for rescheduling
 scheduler_instance = None
 
 def start_scheduler(app):
     global scheduler_instance
     scheduler_instance = BackgroundScheduler()
 
-    # On startup find the next match time and schedule accordingly
     with app.app_context():
         from database import Match
         ist = timezone(timedelta(hours=5, minutes=30))
         now = datetime.now(timezone.utc)
-
-        # Find next trigger time
         trigger_times = []
 
         upcoming = Match.query.filter_by(status="upcoming").all()
@@ -119,7 +128,6 @@ def start_scheduler(app):
             trigger = "date"
             trigger_kwargs = {"run_date": next_run}
         else:
-            # No matches — check once a day in case admin adds matches
             print("⏰ No upcoming matches — checking daily")
             trigger = "interval"
             trigger_kwargs = {"hours": 24}
@@ -132,5 +140,5 @@ def start_scheduler(app):
         **trigger_kwargs
     )
     scheduler_instance.start()
-    print("⏰ Match status scheduler started!")
+    print("Match status scheduler started!")
     return scheduler_instance
