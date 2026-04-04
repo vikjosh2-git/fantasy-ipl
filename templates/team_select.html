@@ -191,7 +191,7 @@
           data-next-game="{{ player_next_match.get(p.id, 99) }}"
           data-foreigner="{{ 'true' if p.is_foreigner else 'false' }}"
           data-name="{{ p.name | replace("'","&#39;") }}"
-          onclick="togglePlayer({{ p.id }}, {{ p.credits }}, {{ p.name | tojson }})"
+          onclick="togglePlayer({{ p.id }}, {{ p.credits }}, '{{ p.name | replace("'", "\\'") }}')"
           style="border-bottom:1px solid #1a2535; cursor:pointer;
                  transition:background 0.1s;">
 
