@@ -970,7 +970,8 @@ def compare_teams(league_id, opponent_id, selected_match_id=None):
         shown_user = {user_cap_id, user_vc_id}
         shown_opp  = {opp_cap_id,  opp_vc_id}
         for pid in common_ids:
-            if pid in shown_user:
+            # Skip if already shown in EITHER side's C/VC row
+            if pid in shown_user or pid in shown_opp:
                 continue
             up = user_player_map.get(pid)
             op = opp_player_map.get(pid)
@@ -978,7 +979,7 @@ def compare_teams(league_id, opponent_id, selected_match_id=None):
                                  "type": "common"})
             shown_user.add(pid)
             shown_opp.add(pid)
-
+            
         # Unique players — pair them side by side where possible
         u_unique_list = [user_player_map[p] for p in user_pids
                          if p not in shown_user and p in user_player_map]

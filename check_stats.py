@@ -1,14 +1,10 @@
-with open('scoring_config.py', 'r', encoding='utf-8') as f:
-    content = f.read()
+# save as fix_match8.py
+from app import app
+from database import db, Match
+app.app_context().push()
 
-content = content.replace('"preseason_transfers": "true"', '"preseason_transfers": true')
-content = content.replace('"preseason_transfers": "false"', '"preseason_transfers": false')
-
-with open('scoring_config.py', 'w', encoding='utf-8') as f:
-    f.write(content)
-
-print('Fixed!')
-
-# Verify
-from scoring_config import SCORING_CONFIG
-print(f"preseason_transfers = {SCORING_CONFIG['preseason_transfers']} ({type(SCORING_CONFIG['preseason_transfers']).__name__})")
+match = Match.query.filter_by(match_number=8).first()
+print(f"Current ID: {match.cricapi_match_id}")
+match.cricapi_match_id = "PASTE_CORRECT_ID_HERE"
+db.session.commit()
+print(f"Updated to: {match.cricapi_match_id}")
