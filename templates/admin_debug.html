@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Debug — Admin{% endblock %}
+{% block content %}
+
+<a href="/admin" style="color:#f5a623; text-decoration:none; font-size:13px;">
+  ← Back to Admin Panel
+</a>
+
+<h1 class="page-title">🔧 Admin Debug</h1>
+
+<div class="card" style="margin-bottom:16px; padding:14px;">
+  <div style="display:flex; justify-content:space-between; align-items:center;
+              margin-bottom:12px;">
+    <div style="color:#aaa; font-size:13px;">
+      Edit the debug code in <code style="color:#f5a623;">app.py</code>
+      → <code style="color:#f5a623;">/admin/debug/run</code>
+      then deploy and click Run.
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button onclick="runDebug()" id="runBtn"
+              class="btn btn-primary"
+              style="padding:8px 24px; font-size:14px;">
+        ▶ Run Debug
+      </button>
+      <button onclick="clearOutput()"
+              style="padding:8px 16px; background:#333; color:#aaa;
+                     border:none; border-radius:6px; font-size:13px;
+                     cursor:pointer;">
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- Output terminal -->
+  <div id="output"
+       style="background:#0a0f1a; border:1px solid #2a3a5a; border-radius:8px;
+              padding:16px; font-family:monospace; font-size:12px;
+              color:#81c784; min-height:300px; max-height:600px;
+              overflow-y:auto; white-space:pre-wrap; line-height:1.6;">
+    <span style="color:#555;">Output will appear here...</span>
+  </div>
+
+  <div style="margin-top:8px; font-size:11px; color:#444; text-align:right;">
+    Last run: <span id="lastRun">—</span>
+  </div>
+</div>
+
+<script>
+function runDebug() {
+  const btn = document.getElementById("runBtn");
+  const out = document.getElementById("output");
+
+  btn.disabled = true;
+  btn.textContent = "⏳ Running...";
+  out.style.color = "#555";
+  out.textContent = "Running debug script...";
+
+  fetch("/admin/debug/run", { method: "POST" })
+    .then(r => r.json())
+    .then(data => {
+      out.style.color = "#81c784";
+      out.textContent = data.output || "(no output)";
+      // Colour ❌ lines red
+      out.innerHTML = out.textContent
+        .split("\n")
+        .map(line => {
+          if (line.includes("❌") || line.includes("EXCEPTION") ||
+              line.includes("Error") || line.includes("Traceback"))
+            return `<span style="color:#ef5350;">${escHtml(line)}</span>`;
+          if (line.includes("✅") || line.includes("PASS"))
+            return `<span style="color:#43a047;">${escHtml(line)}</span>`;
+          if (line.includes("==="))
+            return `<span style="color:#f5a623;">${escHtml(line)}</span>`;
+          return escHtml(line);
+        })
+        .join("\n");
+      document.getElementById("lastRun").textContent =
+        new Date().toLocaleTimeString();
+    })
+    .catch(err => {
+      out.style.color = "#ef5350";
+      out.textContent = "❌ Fetch error: " + err;
+    })
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = "▶ Run Debug";
+    });
+}
+
+function clearOutput() {
+  const out = document.getElementById("output");
+  out.style.color = "#555";
+  out.innerHTML = "<span style='color:#555;'>Output will appear here...</span>";
+  document.getElementById("lastRun").textContent = "—";
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+</script>
+
+{% endblock %}

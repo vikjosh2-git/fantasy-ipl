@@ -979,7 +979,7 @@ def compare_teams(league_id, opponent_id, selected_match_id=None):
                                  "type": "common"})
             shown_user.add(pid)
             shown_opp.add(pid)
-            
+
         # Unique players — pair them side by side where possible
         u_unique_list = [user_player_map[p] for p in user_pids
                          if p not in shown_user and p in user_player_map]
@@ -1367,6 +1367,100 @@ def clear_all_cache():
         shutil.rmtree(cache_dir)
     os.makedirs(cache_dir, exist_ok=True)
     flash(f"✅ Cleared {count} cached scorecard(s)!", "success")
+    return redirect(url_for("admin"))
+
+@app.route("/admin/debug")
+@admin_required
+def admin_debug():
+    return render_template("admin_debug.html")
+
+@app.route("/admin/debug/run", methods=["POST"])
+@admin_required
+def admin_debug_run():
+    import io, sys, traceback
+    from contextlib import redirect_stdout
+
+    output = io.StringIO()
+    try:
+        with redirect_stdout(output):
+            # ── PASTE DEBUG CODE HERE ──────────────────────────
+            from database import TransferHistory, TransferWindow, Player, Match, User
+
+            user = User.query.get(5)
+            print(f"User: {user.username if user else 'NOT FOUND'}, "
+                  f"transfers_remaining: {user.transfers_remaining if user else 'N/A'}")
+
+            print("\n=== Raw TransferHistory ===")
+            transfers = TransferHistory.query.filter_by(user_id=5).all()
+            print(f"Count: {len(transfers)}")
+            for t in transfers:
+                print(f"  id={t.id} window_match_id={t.window_match_id} "
+                      f"in={t.player_in_id} out={t.player_out_id}")
+
+            print("\n=== Checking joins ===")
+            for t in transfers:
+                player_in  = Player.query.get(t.player_in_id)
+                player_out = Player.query.get(t.player_out_id)
+                match      = Match.query.get(t.window_match_id)
+                print(f"  Transfer {t.id}:")
+                print(f"    player_in  ({t.player_in_id}): "
+                      f"{player_in.name if player_in else '❌ NOT FOUND'}")
+                print(f"    player_out ({t.player_out_id}): "
+                      f"{player_out.name if player_out else '❌ NOT FOUND'}")
+                print(f"    match ({t.window_match_id}): "
+                      f"{'Match ' + str(match.match_number) if match else '❌ NOT FOUND'}")
+
+            print("\n=== TransferWindows ===")
+            for w in TransferWindow.query.all():
+                print(f"  id={w.id} user={w.user_id} "
+                      f"match={w.window_start_match} used={w.transfers_used}")
+
+            print("\n=== All Users ===")
+            for u in User.query.all():
+                print(f"  {u.username}: remaining={u.transfers_remaining}")
+            # ── END DEBUG CODE ─────────────────────────────────
+
+    except Exception:
+        print("\n❌ EXCEPTION:")
+        print(traceback.format_exc(), file=output)
+
+    return jsonify({"output": output.getvalue()})
+
+@app.route("/admin/backfill-snapshots/<int:match_id>")
+@admin_required
+def backfill_snapshots(match_id):
+    from database import Match, User, UserTeam, UserMatchTeam
+    
+    match = Match.query.get(match_id)
+    if not match:
+        flash(f"Match {match_id} not found!", "error")
+        return redirect(url_for("admin"))
+
+    count = 0
+    skipped = 0
+    for user in User.query.all():
+        team = UserTeam.query.filter_by(user_id=user.id).first()
+        if not team or not team.player_ids:
+            skipped += 1
+            continue
+        existing = UserMatchTeam.query.filter_by(
+            user_id=user.id, match_id=match_id).first()
+        if existing:
+            skipped += 1
+            continue
+        db.session.add(UserMatchTeam(
+            user_id=user.id,
+            match_id=match_id,
+            player_ids=team.player_ids,
+            captain_id=team.captain_id,
+            vice_captain_id=team.vice_captain_id,
+            points_scored=0
+        ))
+        count += 1
+
+    db.session.commit()
+    flash(f"✅ Backfilled {count} snapshots for Match {match.match_number} "
+          f"({match.team1} vs {match.team2}). Skipped {skipped}.", "success")
     return redirect(url_for("admin"))
 
 if __name__ == "__main__":
