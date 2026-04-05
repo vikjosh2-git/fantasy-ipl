@@ -1426,42 +1426,6 @@ def admin_debug_run():
 
     return jsonify({"output": output.getvalue()})
 
-@app.route("/admin/backfill-snapshots/<int:match_id>")
-@admin_required
-def backfill_snapshots(match_id):
-    from database import Match, User, UserTeam, UserMatchTeam
-    
-    match = Match.query.get(match_id)
-    if not match:
-        flash(f"Match {match_id} not found!", "error")
-        return redirect(url_for("admin"))
-
-    count = 0
-    skipped = 0
-    for user in User.query.all():
-        team = UserTeam.query.filter_by(user_id=user.id).first()
-        if not team or not team.player_ids:
-            skipped += 1
-            continue
-        existing = UserMatchTeam.query.filter_by(
-            user_id=user.id, match_id=match_id).first()
-        if existing:
-            skipped += 1
-            continue
-        db.session.add(UserMatchTeam(
-            user_id=user.id,
-            match_id=match_id,
-            player_ids=team.player_ids,
-            captain_id=team.captain_id,
-            vice_captain_id=team.vice_captain_id,
-            points_scored=0
-        ))
-        count += 1
-
-    db.session.commit()
-    flash(f"✅ Backfilled {count} snapshots for Match {match.match_number} "
-          f"({match.team1} vs {match.team2}). Skipped {skipped}.", "success")
-    return redirect(url_for("admin"))
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
