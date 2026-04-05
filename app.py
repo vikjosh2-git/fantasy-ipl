@@ -1373,9 +1373,9 @@ def admin_debug_run():
 
     output = io.StringIO()
     try:
-        with redirect_stdout(output):
+        with redirect_stdout(output):   
             # ── PASTE DEBUG CODE HERE ──────────────────────────
-from database import Match
+            from database import Match
             from datetime import datetime
             from sqlalchemy import text
 
