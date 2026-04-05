@@ -12,9 +12,16 @@
     <thead>
       <tr style="border-bottom:2px solid #333;">
         <th style="padding:12px; text-align:left; color:#aaa;">Rank</th>
+        <td style="padding:12px; text-align:right; font-weight:bold;">{{ member.total_points }}</td>
+        <td style="padding:12px; text-align:right;">
+          <span style="color:{% if member.transfers_remaining < 10 %}#ef5350{% elif member.transfers_remaining < 50 %}#f5a623{% else %}#43a047{% endif %};">
+            {{ member.transfers_remaining }}
+          </span>
+        </td>
         <th style="padding:12px; text-align:left; color:#aaa;">Team</th>
         <th style="padding:12px; text-align:left; color:#aaa;">Manager</th>
         <th style="padding:12px; text-align:right; color:#aaa;">Points</th>
+        <th style="padding:12px; text-align:right; color:#aaa;">Transfers Left</th>
         <th style="padding:12px; text-align:right; color:#aaa;">Compare</th>
       </tr>
     </thead>
