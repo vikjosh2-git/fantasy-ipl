@@ -1427,43 +1427,5 @@ def admin_debug_run():
     return jsonify({"output": output.getvalue()})
 
 
-
-#temp code starts ------
-@app.route("/admin/force-live/<int:match_id>")
-@admin_required
-def force_live(match_id):
-    from database import Match, User, UserTeam, UserMatchTeam
-    match = Match.query.get(match_id)
-    if not match:
-        flash("Match not found!", "error")
-        return redirect(url_for("admin"))
-    
-    match.status = "live"
-    
-    # Create snapshots
-    count = 0
-    for user in User.query.all():
-        team = UserTeam.query.filter_by(user_id=user.id).first()
-        if not team or not team.player_ids:
-            continue
-        existing = UserMatchTeam.query.filter_by(
-            user_id=user.id, match_id=match_id).first()
-        if not existing:
-            db.session.add(UserMatchTeam(
-                user_id=user.id,
-                match_id=match_id,
-                player_ids=team.player_ids,
-                captain_id=team.captain_id,
-                vice_captain_id=team.vice_captain_id,
-                points_scored=0
-            ))
-            count += 1
-    
-    db.session.commit()
-    flash(f"✅ Match {match.match_number} set to LIVE with "
-          f"{count} snapshots created!", "success")
-    return redirect(url_for("admin"))
-# temp code-ends
-
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")

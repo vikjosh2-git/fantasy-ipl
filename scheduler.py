@@ -133,17 +133,21 @@ def start_scheduler(app):
                 trigger_times.append(match_end)
 
         if trigger_times:
-            # Always run immediately on startup to catch any missed transitions
-            next_run = datetime.now(timezone.utc) + timedelta(minutes=1)
+            # If any match is currently overdue (should be live), run in 1 min
+            # Otherwise schedule for the actual next trigger
+            overdue = any(t <= datetime.now(timezone.utc) for t in trigger_times)
+            if overdue:
+                next_run = datetime.now(timezone.utc) + timedelta(minutes=1)
+                print("⚠️ Overdue matches detected — running check in 1 min")
+            else:
+                next_run = min(trigger_times) + timedelta(minutes=2)
+            
             ist_display = next_run.astimezone(IST)
             print(f"⏰ Match scheduler: first check at "
                   f"{ist_display.strftime('%b %d %I:%M %p')} IST")
             trigger = "date"
             trigger_kwargs = {"run_date": next_run}
-        else:
-            print("⏰ No upcoming matches — checking daily")
-            trigger = "interval"
-            trigger_kwargs = {"hours": 24}
+
 
     scheduler_instance.add_job(
         func=lambda: update_match_statuses(app),
