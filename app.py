@@ -280,8 +280,9 @@ def save_team():
         user.first_transfer_window_id = current_window.id
 
     # ── Free period = still in their very first window ─────────
-    in_free_period = (current_window.id == user.first_transfer_window_id)
-
+   # in_free_period = (current_window.id == user.first_transfer_window_id)
+    in_free_period = (window_match_id == 0) or is_first_selection
+    
     new_player_ids_str = ",".join(str(x) for x in data["player_ids"])
 
     if is_first_selection or in_free_period:
@@ -336,20 +337,23 @@ def save_team():
                        f"but only {user.transfers_remaining} remaining."
         })
 
-    # ── Log transfers ─────────────────────────────────────────
-    if delta > 0:
-        newly_added   = (new_ids - baseline_ids) - (old_ids - baseline_ids)
-        newly_removed = (old_ids - baseline_ids) - (new_ids - baseline_ids)
-        for player_in_id, player_out_id in zip(
-            sorted(newly_added), sorted(newly_removed)
-        ):
-            db.session.add(TransferHistory(
-                user_id=user.id,
-                window_match_id=current_window.window_start_match,
-                player_in_id=player_in_id,
-                player_out_id=player_out_id,
-                transferred_at=utcnow()
-            ))
+    # ── Log transfers — append every change ───────────────────
+    actually_added   = new_ids - old_ids   # players added in THIS save
+    actually_removed = old_ids - new_ids   # players removed in THIS save
+
+    print(f"DEBUG: added={actually_added} removed={actually_removed}")
+
+    for player_in_id, player_out_id in zip(
+        sorted(actually_added), sorted(actually_removed)
+    ):
+        db.session.add(TransferHistory(
+            user_id=user.id,
+            window_match_id=current_window.window_start_match,
+            player_in_id=player_in_id,
+            player_out_id=player_out_id,
+            transferred_at=utcnow()
+        ))
+        print(f"DEBUG logged: in={player_in_id} out={player_out_id}")
 
     # ── Apply ─────────────────────────────────────────────────
     user.transfers_remaining -= additional_transfers
@@ -1375,16 +1379,101 @@ def admin_debug_run():
     try:
         with redirect_stdout(output):   
             # ── PASTE DEBUG CODE HERE ──────────────────────────
-            from database import TransferHistory, Player, Match, User
-            u = User.query.get(5)
-            transfers = TransferHistory.query.filter_by(user_id=u.id).all()
-            for t in transfers:
-                p_in  = Player.query.get(t.player_in_id)
-                p_out = Player.query.get(t.player_out_id)
-                m     = Match.query.get(t.window_match_id)
-                print(f"in={t.player_in_id}({'✅' if p_in else '❌'}) "
-                    f"out={t.player_out_id}({'✅' if p_out else '❌'}) "
-                    f"match={t.window_match_id}({'✅' if m else '❌'})")
+            from app import app
+            from database import db, User, UserMatchTeam, Match, TransferHistory
+            from datetime import timezone
+            app.app_context().push()
+
+            def utcnow():
+                from datetime import datetime
+                return datetime.now(timezone.utc)
+
+            # Get all completed matches in order
+            matches = Match.query.filter(
+                Match.status.in_(["completed", "live"])
+            ).order_by(Match.match_date).all()
+
+            print(f"Found {len(matches)} completed/live matches")
+
+            # Get all users
+            users = User.query.all()
+
+            inserted = 0
+            skipped  = 0
+
+            for user in users:
+                print(f"\n── {user.username} ──")
+
+                # Get all snapshots for this user in match order
+                snapshots = {}
+                for match in matches:
+                    snap = UserMatchTeam.query.filter_by(
+                        user_id=user.id, match_id=match.id).first()
+                    if snap:
+                        pids = set(int(x) for x in snap.player_ids.split(",") if x.strip())
+                        snapshots[match.id] = pids
+
+                match_ids_with_snaps = [m.id for m in matches if m.id in snapshots]
+
+                if len(match_ids_with_snaps) < 2:
+                    print(f"  Not enough snapshots to compare ({len(match_ids_with_snaps)})")
+                    continue
+
+                # Compare consecutive snapshots
+                for i in range(1, len(match_ids_with_snaps)):
+                    prev_match_id = match_ids_with_snaps[i - 1]
+                    curr_match_id = match_ids_with_snaps[i]
+
+                    prev_ids = snapshots[prev_match_id]
+                    curr_ids = snapshots[curr_match_id]
+
+                    added   = curr_ids - prev_ids  # transferred IN
+                    removed = prev_ids - curr_ids  # transferred OUT
+
+                    if not added and not removed:
+                        print(f"  Match {curr_match_id}: no changes")
+                        continue
+
+                    print(f"  Match {curr_match_id}: +{len(added)} in, -{len(removed)} out")
+
+                    # Check if records already exist for this window
+                    existing = TransferHistory.query.filter_by(
+                        user_id=user.id,
+                        window_match_id=curr_match_id
+                    ).count()
+
+                    if existing > 0:
+                        print(f"  Skipping — {existing} records already exist")
+                        skipped += len(added)
+                        continue
+
+                    # Pair added/removed players
+                    added_list   = sorted(added)
+                    removed_list = sorted(removed)
+
+                    # Pair them up — use None if counts differ
+                    max_len = max(len(added_list), len(removed_list))
+                    for j in range(max_len):
+                        player_in_id  = added_list[j]   if j < len(added_list)   else None
+                        player_out_id = removed_list[j]  if j < len(removed_list) else None
+
+                        if player_in_id is None or player_out_id is None:
+                            print(f"  ⚠️ Unequal transfers — in={player_in_id} out={player_out_id}, skipping")
+                            continue
+
+                        db.session.add(TransferHistory(
+                            user_id=user.id,
+                            window_match_id=curr_match_id,
+                            player_in_id=player_in_id,
+                            player_out_id=player_out_id,
+                            transferred_at=utcnow()
+                        ))
+                        inserted += 1
+                        print(f"  ✅ Logged: in={player_in_id} out={player_out_id}")
+
+            db.session.commit()
+            print(f"\n🏏 Done! Inserted: {inserted}, Skipped: {skipped}")
+
             # ── END DEBUG CODE ─────────────────────────────────
 
     except Exception:
