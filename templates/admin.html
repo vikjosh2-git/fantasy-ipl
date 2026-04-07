@@ -101,12 +101,19 @@
       </label>
       <select id="completedMatchSelect" style="width:100%;"
               onchange="if(this.value) window.location.href='/admin/match/'+this.value">
+
         <option value="">-- Select Match --</option>
-        {% for match in completed_matches %}
+        {% for match in live_matches %}
         <option value="{{ match.id }}">
-          Match {{ match.match_number }}: {{ match.team1 }} vs {{ match.team2 }}
+          🔴 Match {{ match.match_number }}: {{ match.team1 }} vs {{ match.team2 }}
         </option>
         {% endfor %}
+        {% for match in completed_matches %}
+        <option value="{{ match.id }}">
+          ✅ Match {{ match.match_number }}: {{ match.team1 }} vs {{ match.team2 }}
+        </option>
+        {% endfor %}
+
       </select>
     </div>
   </div>

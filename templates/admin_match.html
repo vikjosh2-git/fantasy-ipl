@@ -26,11 +26,19 @@
   <!-- Match Status -->
   <div class="card" style="margin-bottom:24px;">
     <h3 style="color:#f5a623; margin-bottom:16px;">Match Status</h3>
-    <select name="match_status" style="width:auto; display:inline-block; padding:10px;">
-      <option value="upcoming" {% if match.status == 'upcoming' %}selected{% endif %}>Upcoming</option>
-      <option value="live" {% if match.status == 'live' %}selected{% endif %}>Live</option>
-      <option value="completed" {% if match.status == 'completed' %}selected{% endif %}>Completed</option>
-    </select>
+      <select name="match_status">
+        <option value="">-- No Change --</option>
+        {% if match.status == 'upcoming' %}
+        <option value="live">Mark Live</option>
+        {% endif %}
+        {% if match.status in ('upcoming', 'live') %}
+        <option value="completed">Mark Completed</option>
+        {% endif %}
+        {% if match.status == 'completed' %}
+        <option value="live">Revert to Live</option>
+        {% endif %}
+      </select>
+
     <p style="color:#aaa; font-size:13px; margin-top:8px;">
       ⚠️ Set to <strong>Completed</strong> to trigger points calculation for all users.
     </p>
@@ -248,6 +256,18 @@
                     value="{{ stat.maidens if stat else 0 }}"
                     style="width:55px; padding:6px; text-align:center;">
             </td>
+
+            <td style="padding:10px;">
+              <input type="number" name="wides_{{ player.id }}" min="0"
+                     value="{{ stat.wides if stat else 0 }}"
+                     style="width:50px; padding:6px; text-align:center;">
+            </td>
+            <td style="padding:10px;">
+              <input type="number" name="no_balls_{{ player.id }}" min="0"
+                     value="{{ stat.no_balls if stat else 0 }}"
+                     style="width:50px; padding:6px; text-align:center;">
+            </td>
+
             <td style="padding:10px;">
             <input type="number" name="catches_{{ player.id }}" min="0"
                     value="{{ stat.catches if stat else 0 }}"
