@@ -1378,24 +1378,24 @@ def admin_debug_run():
     try:
         with redirect_stdout(output):   
 # ── PASTE DEBUG CODE HERE ──────────────────────────
-        from database import Match, UserMatchTeam
-        from datetime import datetime, timezone, timedelta
+            from database import Match, UserMatchTeam
+            from datetime import datetime, timezone, timedelta
 
-        IST = timezone(timedelta(hours=5, minutes=30))
+            IST = timezone(timedelta(hours=5, minutes=30))
 
-        # Check matches 13 and 14
-        for num in [13, 14, 15]:
-            m = Match.query.filter_by(match_number=num).first()
-            if m:
-                match_utc = m.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
-                snaps = UserMatchTeam.query.filter_by(match_id=m.id).count()
-                print(f"Match {m.match_number}: {m.team1} vs {m.team2}")
-                print(f"  Status: {m.status}")
-                print(f"  Date IST: {m.match_date}")
-                print(f"  Date UTC: {match_utc}")
-                print(f"  cricapi_id: {m.cricapi_match_id}")
-                print(f"  Snapshots: {snaps}")
-                print()
+            # Check matches 13 and 14
+            for num in [13, 14, 15]:
+                m = Match.query.filter_by(match_number=num).first()
+                if m:
+                    match_utc = m.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
+                    snaps = UserMatchTeam.query.filter_by(match_id=m.id).count()
+                    print(f"Match {m.match_number}: {m.team1} vs {m.team2}")
+                    print(f"  Status: {m.status}")
+                    print(f"  Date IST: {m.match_date}")
+                    print(f"  Date UTC: {match_utc}")
+                    print(f"  cricapi_id: {m.cricapi_match_id}")
+                    print(f"  Snapshots: {snaps}")
+                    print()
 # ── END DEBUG CODE ─────────────────────────────────
 
     except Exception:
