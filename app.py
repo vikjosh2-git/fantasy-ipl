@@ -1377,47 +1377,26 @@ def admin_debug_run():
     output = io.StringIO()
     try:
         with redirect_stdout(output):   
-            # ── PASTE DEBUG CODE HERE ──────────────────────────
-            from scheduler import scheduler_instance
-            from database import Match
-            from datetime import datetime, timezone, timedelta
+# ── PASTE DEBUG CODE HERE ──────────────────────────
+        from database import Match, UserMatchTeam
+        from datetime import datetime, timezone, timedelta
 
-            IST = timezone(timedelta(hours=5, minutes=30))
-            now = datetime.now(timezone.utc)
+        IST = timezone(timedelta(hours=5, minutes=30))
 
-            print(f"Current time: {now.astimezone(IST).strftime('%b %d %I:%M %p')} IST")
-            print()
-
-            # Check scheduler state
-            if scheduler_instance:
-                print(f"Scheduler running: {scheduler_instance.running}")
-                jobs = scheduler_instance.get_jobs()
-                print(f"Jobs: {len(jobs)}")
-                for job in jobs:
-                    print(f"  Job: {job.id}")
-                    print(f"  Next run: {job.next_run_time}")
-                    if job.next_run_time:
-                        ist_time = job.next_run_time.astimezone(IST)
-                        print(f"  Next run IST: {ist_time.strftime('%b %d %I:%M %p')}")
-            else:
-                print("❌ scheduler_instance is None!")
-
-            print()
-
-            # Check upcoming/live matches
-            print("=== Match statuses ===")
-            matches = Match.query.filter(
-                Match.status.in_(["upcoming", "live"])
-            ).order_by(Match.match_date).limit(5).all()
-            for m in matches:
-                match_utc = m.match_date.replace(
-                    tzinfo=IST).astimezone(timezone.utc)
-                diff = (match_utc - now).total_seconds() / 60
+        # Check matches 13 and 14
+        for num in [13, 14, 15]:
+            m = Match.query.filter_by(match_number=num).first()
+            if m:
+                match_utc = m.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
+                snaps = UserMatchTeam.query.filter_by(match_id=m.id).count()
                 print(f"Match {m.match_number}: {m.team1} vs {m.team2}")
                 print(f"  Status: {m.status}")
                 print(f"  Date IST: {m.match_date}")
-                print(f"  {'In ' + str(int(diff)) + ' mins' if diff > 0 else 'Overdue by ' + str(int(-diff)) + ' mins'}")
-            # ── END DEBUG CODE ─────────────────────────────────
+                print(f"  Date UTC: {match_utc}")
+                print(f"  cricapi_id: {m.cricapi_match_id}")
+                print(f"  Snapshots: {snaps}")
+                print()
+# ── END DEBUG CODE ─────────────────────────────────
 
     except Exception:
         print("\n❌ EXCEPTION:")
