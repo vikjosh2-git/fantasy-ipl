@@ -1378,24 +1378,60 @@ def admin_debug_run():
     try:
         with redirect_stdout(output):   
 # ── PASTE DEBUG CODE HERE ──────────────────────────
-            from database import Match, UserMatchTeam
-            from datetime import datetime, timezone, timedelta
+                from database import db, Match, User, UserTeam, UserMatchTeam
 
-            IST = timezone(timedelta(hours=5, minutes=30))
+                match = Match.query.filter_by(match_number=14).first()
+                print(f"Match 14: {match.team1} vs {match.team2} [{match.status}]")
 
-            # Check matches 13 and 14
-            for num in [13, 14, 15]:
-                m = Match.query.filter_by(match_number=num).first()
-                if m:
-                    match_utc = m.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
-                    snaps = UserMatchTeam.query.filter_by(match_id=m.id).count()
-                    print(f"Match {m.match_number}: {m.team1} vs {m.team2}")
-                    print(f"  Status: {m.status}")
-                    print(f"  Date IST: {m.match_date}")
-                    print(f"  Date UTC: {match_utc}")
-                    print(f"  cricapi_id: {m.cricapi_match_id}")
-                    print(f"  Snapshots: {snaps}")
-                    print()
+                count = 0
+                for user in User.query.all():
+                    team = UserTeam.query.filter_by(user_id=user.id).first()
+                    if not team or not team.player_ids:
+                        continue
+                    existing = UserMatchTeam.query.filter_by(
+                        user_id=user.id, match_id=match.id).first()
+                    if not existing:
+                        db.session.add(UserMatchTeam(
+                            user_id=user.id,
+                            match_id=match.id,
+                            player_ids=team.player_ids,
+                            captain_id=team.captain_id,
+                            vice_captain_id=team.vice_captain_id,
+                            points_scored=0
+                        ))
+                        count += 1
+                        print(f"  📸 Snapshot: {user.username}")
+
+                db.session.commit()
+                print(f"\nTotal snapshots created: {count}")
+
+
+
+                from database import db, Match
+
+                # Fix match 15 - correct ID from currentMatches
+                fixes = [
+                    (15, "c78dcc8a-67cf-460a-8f2b-8f16d3891682"),  # KKR vs LSG - verify this
+                ]
+
+                # Actually fetch correct ID first
+                import requests
+                API_KEY = "0fcdf764-1fd7-46b9-9d4c-6698264d48ee"
+                r = requests.get(
+                    "https://api.cricapi.com/v1/currentMatches",
+                    params={"apikey": API_KEY}
+                )
+                SERIES_ID = "87c62aac-bc3c-4738-ab93-19da0690488f"
+                for m in r.json().get("data", []):
+                    if m.get("series_id") == SERIES_ID:
+                        teams = m.get("teams", [])
+                        print(f"ID: {m['id']}")
+                        print(f"  Name: {m['name']}")
+                        print(f"  Date: {m['date']}")
+                        print(f"  Status: {m['status']}")
+                        print()
+
+                        
 # ── END DEBUG CODE ─────────────────────────────────
 
     except Exception:
