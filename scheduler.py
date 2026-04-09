@@ -3,18 +3,44 @@ from datetime import datetime, timezone, timedelta
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
+
+def _create_snapshots(match, db, User, UserTeam, UserMatchTeam):
+    """Create team snapshots for all users for a given match."""
+    count = 0
+    for user in User.query.all():
+        team = UserTeam.query.filter_by(user_id=user.id).first()
+        if not team or not team.player_ids:
+            continue
+        existing = UserMatchTeam.query.filter_by(
+            user_id=user.id, match_id=match.id
+        ).first()
+        if not existing:
+            db.session.add(UserMatchTeam(
+                user_id=user.id,
+                match_id=match.id,
+                player_ids=team.player_ids,
+                captain_id=team.captain_id,
+                vice_captain_id=team.vice_captain_id
+            ))
+            count += 1
+    print(f"📸 {count} snapshots for Match {match.match_number}")
+    return count
+
+
 def update_match_statuses(app):
     with app.app_context():
         from database import db, Match, User, UserTeam, UserMatchTeam
         now = datetime.now(timezone.utc)
         changed = 0
 
+        # ── Process upcoming → live and live → completed ───────
         matches = Match.query.filter(
             Match.status.in_(["upcoming", "live"])
         ).all()
 
         for match in matches:
-            match_utc = match.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
+            match_utc = match.match_date.replace(
+                tzinfo=IST).astimezone(timezone.utc)
             match_end = match_utc + timedelta(hours=3, minutes=30)
 
             if match.status == "upcoming" and now >= match_utc:
@@ -22,26 +48,7 @@ def update_match_statuses(app):
                 changed += 1
                 print(f"🟢 Match {match.match_number} LIVE: "
                       f"{match.team1} vs {match.team2}")
-
-                # Snapshot all users with teams
-                snapshot_count = 0
-                for user in User.query.all():
-                    team = UserTeam.query.filter_by(user_id=user.id).first()
-                    if not team or not team.player_ids:
-                        continue
-                    existing = UserMatchTeam.query.filter_by(
-                        user_id=user.id, match_id=match.id
-                    ).first()
-                    if not existing:
-                        db.session.add(UserMatchTeam(
-                            user_id=user.id,
-                            match_id=match.id,
-                            player_ids=team.player_ids,
-                            captain_id=team.captain_id,
-                            vice_captain_id=team.vice_captain_id
-                        ))
-                        snapshot_count += 1
-                print(f"📸 {snapshot_count} snapshots for Match {match.match_number}")
+                _create_snapshots(match, db, User, UserTeam, UserMatchTeam)
 
             elif match.status == "live" and now >= match_end:
                 match.status = "completed"
@@ -49,8 +56,28 @@ def update_match_statuses(app):
                 print(f"✅ Match {match.match_number} COMPLETED: "
                       f"{match.team1} vs {match.team2}")
 
+        # ── Backfill: fix completed matches with 0 snapshots ───
+        # Catches cases where scheduler missed a match start
+        # e.g. Railway redeployed after match started
+        completed_matches = Match.query.filter_by(status="completed").all()
+        users_with_teams = User.query.join(
+            UserTeam, User.id == UserTeam.user_id
+        ).count()
+
+        for match in completed_matches:
+            snap_count = UserMatchTeam.query.filter_by(
+                match_id=match.id).count()
+            if snap_count == 0 and users_with_teams > 0:
+                print(f"⚠️ Match {match.match_number} has 0 snapshots "
+                      f"— backfilling now...")
+                _create_snapshots(match, db, User, UserTeam, UserMatchTeam)
+                changed += 1
+
         if changed:
             db.session.commit()
+            print(f"✅ Scheduler run complete — {changed} changes made")
+        else:
+            print("✅ Scheduler run complete — no changes needed")
 
         reschedule_next_check(app)
 
@@ -65,16 +92,20 @@ def reschedule_next_check(app):
 
         # ALL upcoming match starts
         for match in Match.query.filter_by(status="upcoming").all():
-            match_utc = match.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
+            match_utc = match.match_date.replace(
+                tzinfo=IST).astimezone(timezone.utc)
             if match_utc > now:
-                trigger_times.append(("start", match.match_number, match_utc))
+                trigger_times.append(
+                    ("start", match.match_number, match_utc))
 
         # ALL live match ends
         for match in Match.query.filter_by(status="live").all():
-            match_utc = match.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
+            match_utc = match.match_date.replace(
+                tzinfo=IST).astimezone(timezone.utc)
             match_end = match_utc + timedelta(hours=3, minutes=30)
             if match_end > now:
-                trigger_times.append(("end", match.match_number, match_end))
+                trigger_times.append(
+                    ("end", match.match_number, match_end))
 
         if not trigger_times:
             print("📅 No upcoming matches — scheduler idle")
@@ -87,15 +118,13 @@ def reschedule_next_check(app):
         # Add 2 min buffer
         next_run = next_time + timedelta(minutes=2)
 
-        # Safety: if two triggers are within 30 min of each other
-        # (double header), schedule a mid-check too
+        # Warn about double-headers
         if len(trigger_times) > 1:
             second_time = trigger_times[1][2]
             gap = (second_time - next_time).total_seconds() / 60
-            if gap < 30:
-                # Schedule at first trigger + 2min, will catch both
-                print(f"⚠️ Double-header detected — triggers "
-                      f"{gap:.0f} min apart, scheduling closely")
+            if gap < 240:  # within 4 hours = same day
+                print(f"⚠️ Back-to-back matches — next two triggers "
+                      f"{gap:.0f} min apart")
 
         try:
             scheduler_instance.reschedule_job(
@@ -122,32 +151,31 @@ def start_scheduler(app):
         trigger_times = []
 
         for match in Match.query.filter_by(status="upcoming").all():
-            match_utc = match.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
+            match_utc = match.match_date.replace(
+                tzinfo=IST).astimezone(timezone.utc)
             if match_utc > now:
                 trigger_times.append(match_utc)
 
         for match in Match.query.filter_by(status="live").all():
-            match_utc = match.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
+            match_utc = match.match_date.replace(
+                tzinfo=IST).astimezone(timezone.utc)
             match_end = match_utc + timedelta(hours=3, minutes=30)
             if match_end > now:
                 trigger_times.append(match_end)
 
         if trigger_times:
-            # If any match is currently overdue (should be live), run in 1 min
-            # Otherwise schedule for the actual next trigger
-            overdue = any(t <= datetime.now(timezone.utc) for t in trigger_times)
-            if overdue:
-                next_run = datetime.now(timezone.utc) + timedelta(minutes=1)
-                print("⚠️ Overdue matches detected — running check in 1 min")
-            else:
-                next_run = min(trigger_times) + timedelta(minutes=2)
-            
+            # Always run 1 min after startup to catch any missed transitions
+            # or backfill any completed matches with 0 snapshots
+            next_run = datetime.now(timezone.utc) + timedelta(minutes=1)
             ist_display = next_run.astimezone(IST)
             print(f"⏰ Match scheduler: first check at "
                   f"{ist_display.strftime('%b %d %I:%M %p')} IST")
             trigger = "date"
             trigger_kwargs = {"run_date": next_run}
-
+        else:
+            print("⏰ No upcoming matches — checking daily")
+            trigger = "interval"
+            trigger_kwargs = {"hours": 24}
 
     scheduler_instance.add_job(
         func=lambda: update_match_statuses(app),

@@ -1378,60 +1378,32 @@ def admin_debug_run():
     try:
         with redirect_stdout(output):   
 # ── PASTE DEBUG CODE HERE ──────────────────────────
-                from database import db, Match, User, UserTeam, UserMatchTeam
+            from database import db, Match
+            from sqlalchemy import text
 
-                match = Match.query.filter_by(match_number=14).first()
-                print(f"Match 14: {match.team1} vs {match.team2} [{match.status}]")
+            fixes = [
+                (10, "9186c79f-2121-4fc4-bb8d-3c411b417609", "SRH vs LSG"),
+                (11, "69d5e465-e2e5-4616-aa22-8d069c2dc0fe", "RCB vs CSK"),
+                (12, "12b5d808-d9ab-468e-bd25-a2c347f64bdc", "KKR vs PBKS"),
+                (13, "3dd82a3e-52e3-409b-bb9c-ef458942a7a2", "RR vs MI"),
+                (14, "5945bbf4-b6b5-45b6-abac-db03e8a39130", "DC vs GT"),
+            ]
 
-                count = 0
-                for user in User.query.all():
-                    team = UserTeam.query.filter_by(user_id=user.id).first()
-                    if not team or not team.player_ids:
-                        continue
-                    existing = UserMatchTeam.query.filter_by(
-                        user_id=user.id, match_id=match.id).first()
-                    if not existing:
-                        db.session.add(UserMatchTeam(
-                            user_id=user.id,
-                            match_id=match.id,
-                            player_ids=team.player_ids,
-                            captain_id=team.captain_id,
-                            vice_captain_id=team.vice_captain_id,
-                            points_scored=0
-                        ))
-                        count += 1
-                        print(f"  📸 Snapshot: {user.username}")
+            for match_num, new_id, name in fixes:
+                match = Match.query.filter_by(match_number=match_num).first()
+                if match:
+                    old_id = match.cricapi_match_id
+                    match.cricapi_match_id = new_id
+                    print(f"✅ Match {match_num} ({name})")
+                    print(f"   {old_id}")
+                    print(f"   → {new_id}")
+                else:
+                    print(f"❌ Match {match_num} not found!")
 
-                db.session.commit()
-                print(f"\nTotal snapshots created: {count}")
+            db.session.commit()
+            print("\n🏏 All IDs updated!")
 
 
-
-                from database import db, Match
-
-                # Fix match 15 - correct ID from currentMatches
-                fixes = [
-                    (15, "c78dcc8a-67cf-460a-8f2b-8f16d3891682"),  # KKR vs LSG - verify this
-                ]
-
-                # Actually fetch correct ID first
-                import requests
-                API_KEY = "0fcdf764-1fd7-46b9-9d4c-6698264d48ee"
-                r = requests.get(
-                    "https://api.cricapi.com/v1/currentMatches",
-                    params={"apikey": API_KEY}
-                )
-                SERIES_ID = "87c62aac-bc3c-4738-ab93-19da0690488f"
-                for m in r.json().get("data", []):
-                    if m.get("series_id") == SERIES_ID:
-                        teams = m.get("teams", [])
-                        print(f"ID: {m['id']}")
-                        print(f"  Name: {m['name']}")
-                        print(f"  Date: {m['date']}")
-                        print(f"  Status: {m['status']}")
-                        print()
-
-                        
 # ── END DEBUG CODE ─────────────────────────────────
 
     except Exception:
