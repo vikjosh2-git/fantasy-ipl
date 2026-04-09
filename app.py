@@ -872,9 +872,10 @@ def compare_teams(league_id, opponent_id, selected_match_id=None):
         User.id != user.id
     ).all()
 
-    completed_matches = Match.query.filter_by(
-        status="completed").order_by(Match.match_date).all()
-
+    completed_matches = Match.query.filter(
+        Match.status.in_(["completed", "live"])
+    ).order_by(Match.match_date).all()
+    
     if not selected_match_id and completed_matches:
         selected_match_id = completed_matches[-1].id
 

@@ -148,42 +148,65 @@ def start_scheduler(app):
     with app.app_context():
         from database import Match
         now = datetime.now(timezone.utc)
-        trigger_times = []
 
+        # Check for matches that SHOULD be live but aren't
+        overdue_matches = []
         for match in Match.query.filter_by(status="upcoming").all():
             match_utc = match.match_date.replace(
                 tzinfo=IST).astimezone(timezone.utc)
-            if match_utc > now:
-                trigger_times.append(match_utc)
+            if match_utc <= now:
+                overdue_matches.append(match)
 
-        for match in Match.query.filter_by(status="live").all():
-            match_utc = match.match_date.replace(
-                tzinfo=IST).astimezone(timezone.utc)
-            match_end = match_utc + timedelta(hours=3, minutes=30)
-            if match_end > now:
-                trigger_times.append(match_end)
-
-        if trigger_times:
-            # Always run 1 min after startup to catch any missed transitions
-            # or backfill any completed matches with 0 snapshots
-            next_run = datetime.now(timezone.utc) + timedelta(minutes=1)
-            ist_display = next_run.astimezone(IST)
-            print(f"⏰ Match scheduler: first check at "
-                  f"{ist_display.strftime('%b %d %I:%M %p')} IST")
-            trigger = "date"
-            trigger_kwargs = {"run_date": next_run}
+        if overdue_matches:
+            for m in overdue_matches:
+                print(f"⚠️ Overdue match: {m.match_number} "
+                      f"{m.team1} vs {m.team2}")
+            next_run = now + timedelta(minutes=1)
+            print(f"⚠️ Running overdue check in 1 min")
         else:
-            print("⏰ No upcoming matches — checking daily")
-            trigger = "interval"
-            trigger_kwargs = {"hours": 24}
+            # Find next upcoming trigger
+            trigger_times = []
 
+            for match in Match.query.filter_by(status="upcoming").all():
+                match_utc = match.match_date.replace(
+                    tzinfo=IST).astimezone(timezone.utc)
+                if match_utc > now:
+                    trigger_times.append(match_utc)
+
+            for match in Match.query.filter_by(status="live").all():
+                match_utc = match.match_date.replace(
+                    tzinfo=IST).astimezone(timezone.utc)
+                match_end = match_utc + timedelta(hours=3, minutes=30)
+                if match_end > now:
+                    trigger_times.append(match_end)
+
+            if trigger_times:
+                next_run = min(trigger_times) + timedelta(minutes=2)
+            else:
+                next_run = now + timedelta(hours=24)
+
+        ist_display = next_run.astimezone(IST)
+        print(f"⏰ Match scheduler: first check at "
+              f"{ist_display.strftime('%b %d %I:%M %p')} IST")
+
+    # Always add a 5-minute fallback interval job
     scheduler_instance.add_job(
         func=lambda: update_match_statuses(app),
-        trigger=trigger,
-        id="match_status_updater",
-        replace_existing=True,
-        **trigger_kwargs
+        trigger="interval",
+        minutes=5,
+        id="match_status_fallback",
+        replace_existing=True
     )
+
+    # Primary date-based trigger
+    scheduler_instance.add_job(
+        func=lambda: update_match_statuses(app),
+        trigger="date",
+        run_date=next_run,
+        id="match_status_updater",
+        replace_existing=True
+    )
+
     scheduler_instance.start()
     print("⏰ Match status scheduler started!")
     return scheduler_instance
