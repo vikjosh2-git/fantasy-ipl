@@ -250,6 +250,46 @@
   </table>
 </div>
 
+<!-- Transfer Summary Popup -->
+<div id="savePopup" style="display:none; position:fixed; inset:0;
+     background:rgba(0,0,0,0.5); z-index:2000; align-items:center;
+     justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:24px;
+              max-width:420px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,0.2);
+              border-top:4px solid #2d6a4f;">
+    <div style="display:flex; justify-content:space-between; align-items:center;
+                margin-bottom:16px;">
+      <h3 style="color:#1b4332; margin:0;">✅ Team Saved!</h3>
+      <button onclick="closePopup()"
+              style="background:none; border:none; font-size:20px;
+                     cursor:pointer; color:#aaa; line-height:1;">×</button>
+    </div>
+
+    <!-- Timestamp -->
+    <div style="font-size:12px; color:#888; margin-bottom:16px;">
+      Last updated: <span id="popupTimestamp"></span>
+    </div>
+
+    <!-- Transfer summary -->
+    <div id="popupContent"></div>
+
+    <!-- Transfers remaining -->
+    <div style="margin-top:16px; padding:12px; background:#f0faf4;
+                border-radius:8px; border:1px solid #95d5b2;
+                display:flex; justify-content:space-between;">
+      <span style="color:#2d6a4f; font-size:13px;">Transfers Remaining</span>
+      <span style="color:#1b4332; font-weight:bold; font-size:15px;"
+            id="popupTransfersLeft"></span>
+    </div>
+
+    <button onclick="closePopup()"
+            class="btn btn-primary"
+            style="width:100%; margin-top:16px; padding:10px;">
+      Continue Editing
+    </button>
+  </div>
+</div>
+
 <!-- Floating bottom bar -->
 <div style="position:fixed; bottom:52px; left:0; right:0; z-index:998;
             background:rgba(16,25,50,0.97); border-top:1px solid #2a3a5a;
@@ -343,6 +383,7 @@ const RULES = {
 };
 
 let selected    = {{ selected_ids | tojson }};
+let originalSelected = new Set({{ selected_ids | tojson }});
 let budget      = 100;
 let captainId   = {{ captain_id or 'null' }};
 let vcId        = {{ vc_id or 'null' }};
@@ -615,25 +656,148 @@ function showError(msg) {
 
 // ── Submit ────────────────────────────────────────────────────
 function submitTeam() {
-  if (selected.length !== RULES.teamSize) { showError(`Select exactly ${RULES.teamSize} players!`); return; }
-  if (!captainId) { showError("Select a Captain!"); return; }
-  if (!vcId)      { showError("Select a Vice Captain!"); return; }
-  const counts = getCounts();
-  if (counts.batsmen    < RULES.minBatsmen)    { showError(`Need ${RULES.minBatsmen}+ batsmen!`); return; }
-  if (counts.bowlers    < RULES.minBowlers)    { showError(`Need ${RULES.minBowlers}+ bowlers!`); return; }
-  if (counts.allrounders < RULES.minAllrounders) { showError(`Need ${RULES.minAllrounders}+ all-rounder!`); return; }
-  if (counts.keepers    < RULES.minKeepers)    { showError(`Need ${RULES.minKeepers}+ keeper!`); return; }
-  fetch("/save-team", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ player_ids: selected, captain_id: captainId, vice_captain_id: vcId })
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) window.location.href = "/dashboard";
-    else showError(data.message);
+    if (selected.length !== RULES.teamSize) {
+      showError(`Select exactly ${RULES.teamSize} players!`); return; }
+    if (!captainId) { showError("Select a Captain!"); return; }
+    if (!vcId)      { showError("Select a Vice Captain!"); return; }
+    const counts = getCounts();
+    if (counts.batsmen < RULES.minBatsmen) {
+      showError(`Need ${RULES.minBatsmen}+ batsmen!`); return; }
+    if (counts.bowlers < RULES.minBowlers) {
+      showError(`Need ${RULES.minBowlers}+ bowlers!`); return; }
+    if (counts.allrounders < RULES.minAllrounders) {
+      showError(`Need ${RULES.minAllrounders}+ all-rounder!`); return; }
+    if (counts.keepers < RULES.minKeepers) {
+      showError(`Need ${RULES.minKeepers}+ keeper!`); return; }
+
+    // Snapshot current selected for comparison after save
+    const prevSelected = new Set(originalSelected);
+
+    fetch("/save-team", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        player_ids:      selected,
+        captain_id:      captainId,
+        vice_captain_id: vcId
+      })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        // Build transfer summary
+        const nowSelected = new Set(selected);
+        const addedIds    = selected.filter(id => !prevSelected.has(id));
+        const removedIds  = [...prevSelected].filter(id => !nowSelected.has(id));
+
+        let html = "";
+
+        if (addedIds.length === 0 && removedIds.length === 0) {
+          html = `<div style="color:#666; font-size:13px; text-align:center;
+                              padding:8px;">No player changes made.</div>`;
+        } else {
+          // Transfers in
+          if (addedIds.length > 0) {
+            html += `<div style="margin-bottom:10px;">
+              <div style="color:#2d6a4f; font-size:11px; font-weight:bold;
+                          letter-spacing:0.5px; margin-bottom:6px;">
+                IN (${addedIds.length})
+              </div>`;
+            addedIds.forEach(id => {
+              const row  = document.getElementById("card-" + id);
+              const name = row ? row.dataset.name : "Player " + id;
+              const role = row ? row.dataset.role.toUpperCase() : "";
+              html += `<div style="display:flex; justify-content:space-between;
+                                   padding:5px 8px; background:#f0faf4;
+                                   border-radius:6px; margin-bottom:4px;
+                                   font-size:13px;">
+                <span>✅ ${name}</span>
+                <span style="color:#888; font-size:11px;">${role}</span>
+              </div>`;
+            });
+            html += `</div>`;
+          }
+
+          // Transfers out
+          if (removedIds.length > 0) {
+            html += `<div style="margin-bottom:10px;">
+              <div style="color:#c62828; font-size:11px; font-weight:bold;
+                          letter-spacing:0.5px; margin-bottom:6px;">
+                OUT (${removedIds.length})
+              </div>`;
+            removedIds.forEach(id => {
+              const row  = document.getElementById("card-" + id);
+              const name = row ? row.dataset.name : "Player " + id;
+              const role = row ? row.dataset.role.toUpperCase() : "";
+              html += `<div style="display:flex; justify-content:space-between;
+                                   padding:5px 8px; background:#fde8e8;
+                                   border-radius:6px; margin-bottom:4px;
+                                   font-size:13px;">
+                <span>❌ ${name}</span>
+                <span style="color:#888; font-size:11px;">${role}</span>
+              </div>`;
+            });
+            html += `</div>`;
+          }
+
+          // C/VC
+          const capRow = document.getElementById("card-" + captainId);
+          const vcRow  = document.getElementById("card-" + vcId);
+          html += `<div style="display:flex; gap:8px; margin-top:4px;">
+            <div style="flex:1; padding:6px 10px; background:#f0faf4;
+                        border-radius:6px; font-size:12px; text-align:center;">
+              <div style="color:#888; font-size:10px;">CAPTAIN</div>
+              <div style="color:#1b4332; font-weight:bold;">
+                ${capRow ? capRow.dataset.name : "—"}
+              </div>
+            </div>
+            <div style="flex:1; padding:6px 10px; background:#f0faf4;
+                        border-radius:6px; font-size:12px; text-align:center;">
+              <div style="color:#888; font-size:10px;">VICE CAPTAIN</div>
+              <div style="color:#1b4332; font-weight:bold;">
+                ${vcRow ? vcRow.dataset.name : "—"}
+              </div>
+            </div>
+          </div>`;
+        }
+
+        // Timestamp
+        const now = new Date();
+        const ts  = now.toLocaleString("en-IN", {
+          day:"2-digit", month:"short", year:"numeric",
+          hour:"2-digit", minute:"2-digit", second:"2-digit",
+          hour12: true
+        });
+
+        document.getElementById("popupContent").innerHTML      = html;
+        document.getElementById("popupTimestamp").textContent  = ts;
+        document.getElementById("popupTransfersLeft").textContent =
+          data.transfers_remaining;
+
+        // Update originalSelected to new state
+        originalSelected = new Set(selected);
+
+        // Show popup
+        document.getElementById("savePopup").style.display = "flex";
+
+        // Update transfers pill in bar
+        const tl = document.getElementById("transfersLeft");
+        if (tl) tl.textContent = data.transfers_remaining;
+
+      } else {
+        showError(data.message);
+      }
+    });
+  }
+
+  function closePopup() {
+    document.getElementById("savePopup").style.display = "none";
+  }
+
+  // Close popup on backdrop click
+  document.getElementById("savePopup").addEventListener("click", function(e) {
+    if (e.target === this) closePopup();
   });
-}
 
 // ── Init ──────────────────────────────────────────────────────
 window.onload = function() {

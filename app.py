@@ -1377,32 +1377,33 @@ def admin_debug_run():
     output = io.StringIO()
     try:
         with redirect_stdout(output):   
-# ── PASTE DEBUG CODE HERE ──────────────────────────
-            from database import db, Match
-            from sqlalchemy import text
+            # ── PASTE DEBUG CODE HERE ──────────────────────────
+            from datetime import datetime, timezone, timedelta
+            from database import Match
 
-            fixes = [
-                (10, "9186c79f-2121-4fc4-bb8d-3c411b417609", "SRH vs LSG"),
-                (11, "69d5e465-e2e5-4616-aa22-8d069c2dc0fe", "RCB vs CSK"),
-                (12, "12b5d808-d9ab-468e-bd25-a2c347f64bdc", "KKR vs PBKS"),
-                (13, "3dd82a3e-52e3-409b-bb9c-ef458942a7a2", "RR vs MI"),
-                (14, "5945bbf4-b6b5-45b6-abac-db03e8a39130", "DC vs GT"),
-            ]
+            IST = timezone(timedelta(hours=5, minutes=30))
+            now_utc = datetime.now(timezone.utc)
+            now_ist = now_utc.astimezone(IST)
 
-            for match_num, new_id, name in fixes:
-                match = Match.query.filter_by(match_number=match_num).first()
-                if match:
-                    old_id = match.cricapi_match_id
-                    match.cricapi_match_id = new_id
-                    print(f"✅ Match {match_num} ({name})")
-                    print(f"   {old_id}")
-                    print(f"   → {new_id}")
-                else:
-                    print(f"❌ Match {match_num} not found!")
+            print(f"Server UTC: {now_utc.strftime('%H:%M:%S')}")
+            print(f"Server IST: {now_ist.strftime('%H:%M:%S')}")
+            print()
 
-            db.session.commit()
-            print("\n🏏 All IDs updated!")
+            match = Match.query.filter_by(match_number=15).first()
+            print(f"Match 15: {match.team1} vs {match.team2}")
+            print(f"match_date in DB: {match.match_date}")
+            print(f"match_date type: {type(match.match_date)}")
+            print()
 
+            # How scheduler converts it
+            match_utc = match.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
+            print(f"match_utc (after conversion): {match_utc}")
+            print(f"now_utc: {now_utc}")
+            print(f"now >= match_utc: {now_utc >= match_utc}")
+            print()
+
+            # Check if match_date already has tzinfo
+            print(f"match_date tzinfo: {match.match_date.tzinfo}")
 
 # ── END DEBUG CODE ─────────────────────────────────
 
