@@ -1117,16 +1117,53 @@ def scrape_scorecard():
         flash("Please select a match!", "error")
         return redirect(url_for("admin"))
 
-# Get the cricapi_match_id from the selected match
     match = Match.query.get(match_id)
     if not match or not match.cricapi_match_id:
         flash("This match has no CricAPI ID configured!", "error")
         return redirect(url_for("admin"))
+
+    # ── Auto-correct cricapi_match_id before fetching ──────────
+    import requests as req
+    API_KEY = "0fcdf764-1fd7-46b9-9d4c-6698264d48ee"
+    SERIES_ID = "87c62aac-bc3c-4738-ab93-19da0690488f"
+    try:
+        r = req.get(
+            "https://api.cricapi.com/v1/currentMatches",
+            params={"apikey": API_KEY},
+            timeout=5
+        )
+        if r.status_code == 200:
+            for m in r.json().get("data", []):
+                if m.get("series_id") != SERIES_ID:
+                    continue
+                # Match by match number extracted from name
+                name = m.get("name", "")
+                match_num = None
+                for part in name.split(","):
+                    part = part.strip()
+                    if "Match" in part:
+                        num = part.replace("Match","").replace("th","") \
+                                  .replace("st","").replace("nd","") \
+                                  .replace("rd","").strip()
+                        try:
+                            match_num = int(num)
+                        except:
+                            pass
+                if match_num == match.match_number:
+                    if m["id"] != match.cricapi_match_id:
+                        print(f"🔄 Auto-correcting Match {match.match_number} "
+                              f"ID: {match.cricapi_match_id} → {m['id']}")
+                        match.cricapi_match_id = m["id"]
+                        db.session.commit()
+                    break
+    except Exception as e:
+        print(f"⚠️ Could not auto-correct match ID: {e}")
+        # Continue with existing ID
+
     import os
     cache_file = os.path.join("scorecard_cache", f"{match.cricapi_match_id}.json")
     from_cache = os.path.exists(cache_file)
-    csv_content, error = fetch_cricapi_scorecard(match.cricapi_match_id)
-    
+    csv_content, error = fetch_cricapi_scorecard(match.cricapi_match_id)    
     # Store in session for scrape_preview to use
     session["from_cache"] = from_cache
     session["scrape_match_api_id"] = match.cricapi_match_id
@@ -1372,43 +1409,21 @@ def admin_debug():
 @app.route("/admin/debug/run", methods=["POST"])
 @admin_required
 def admin_debug_run():
-    import io, sys, traceback
+    import io, traceback
     from contextlib import redirect_stdout
 
     output = io.StringIO()
     try:
-        with redirect_stdout(output):   
+        with redirect_stdout(output):
             # ── PASTE DEBUG CODE HERE ──────────────────────────
-            import requests
             from database import Match
-
-            API_KEY = "0fcdf764-1fd7-46b9-9d4c-6698264d48ee"
-            SERIES_ID = "87c62aac-bc3c-4738-ab93-19da0690488f"
-
-            r = requests.get(
-                "https://api.cricapi.com/v1/currentMatches",
-                params={"apikey": API_KEY}
-            )
-
-            for m in r.json().get("data", []):
-                if m.get("series_id") == SERIES_ID:
-                    print(f"Match: {m['name']}")
-                    print(f"ID:    {m['id']}")
-                    print(f"Date:  {m['date']}")
-                    print(f"Status:{m['status']}")
-                    print()
-
-            print(f"Hits today: {r.json().get('info',{}).get('hitsToday','N/A')}")
-
-
-# ── END DEBUG CODE ─────────────────────────────────
-
+            print("Debug ready!")
+            # ── END DEBUG CODE ─────────────────────────────────
     except Exception:
         print("\n❌ EXCEPTION:")
         print(traceback.format_exc(), file=output)
 
     return jsonify({"output": output.getvalue()})
-
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0")
