@@ -7,7 +7,6 @@ from flask import request
 from flask import session
 from flask import flash
 from flask import jsonify
-from scoring_config import SCORING_CONFIG
 from scheduler import start_scheduler
 from scoring_config import SCORING_CONFIG
 from points_engine import save_player_stats, recalculate_user_points
@@ -1379,101 +1378,45 @@ def admin_debug_run():
     try:
         with redirect_stdout(output):   
             # ── PASTE DEBUG CODE HERE ──────────────────────────
-            from app import app
-            from database import db, User, UserMatchTeam, Match, TransferHistory
-            from datetime import timezone
-            app.app_context().push()
+            from scheduler import scheduler_instance
+            from database import Match
+            from datetime import datetime, timezone, timedelta
 
-            def utcnow():
-                from datetime import datetime
-                return datetime.now(timezone.utc)
+            IST = timezone(timedelta(hours=5, minutes=30))
+            now = datetime.now(timezone.utc)
 
-            # Get all completed matches in order
+            print(f"Current time: {now.astimezone(IST).strftime('%b %d %I:%M %p')} IST")
+            print()
+
+            # Check scheduler state
+            if scheduler_instance:
+                print(f"Scheduler running: {scheduler_instance.running}")
+                jobs = scheduler_instance.get_jobs()
+                print(f"Jobs: {len(jobs)}")
+                for job in jobs:
+                    print(f"  Job: {job.id}")
+                    print(f"  Next run: {job.next_run_time}")
+                    if job.next_run_time:
+                        ist_time = job.next_run_time.astimezone(IST)
+                        print(f"  Next run IST: {ist_time.strftime('%b %d %I:%M %p')}")
+            else:
+                print("❌ scheduler_instance is None!")
+
+            print()
+
+            # Check upcoming/live matches
+            print("=== Match statuses ===")
             matches = Match.query.filter(
-                Match.status.in_(["completed", "live"])
-            ).order_by(Match.match_date).all()
-
-            print(f"Found {len(matches)} completed/live matches")
-
-            # Get all users
-            users = User.query.all()
-
-            inserted = 0
-            skipped  = 0
-
-            for user in users:
-                print(f"\n── {user.username} ──")
-
-                # Get all snapshots for this user in match order
-                snapshots = {}
-                for match in matches:
-                    snap = UserMatchTeam.query.filter_by(
-                        user_id=user.id, match_id=match.id).first()
-                    if snap:
-                        pids = set(int(x) for x in snap.player_ids.split(",") if x.strip())
-                        snapshots[match.id] = pids
-
-                match_ids_with_snaps = [m.id for m in matches if m.id in snapshots]
-
-                if len(match_ids_with_snaps) < 2:
-                    print(f"  Not enough snapshots to compare ({len(match_ids_with_snaps)})")
-                    continue
-
-                # Compare consecutive snapshots
-                for i in range(1, len(match_ids_with_snaps)):
-                    prev_match_id = match_ids_with_snaps[i - 1]
-                    curr_match_id = match_ids_with_snaps[i]
-
-                    prev_ids = snapshots[prev_match_id]
-                    curr_ids = snapshots[curr_match_id]
-
-                    added   = curr_ids - prev_ids  # transferred IN
-                    removed = prev_ids - curr_ids  # transferred OUT
-
-                    if not added and not removed:
-                        print(f"  Match {curr_match_id}: no changes")
-                        continue
-
-                    print(f"  Match {curr_match_id}: +{len(added)} in, -{len(removed)} out")
-
-                    # Check if records already exist for this window
-                    existing = TransferHistory.query.filter_by(
-                        user_id=user.id,
-                        window_match_id=curr_match_id
-                    ).count()
-
-                    if existing > 0:
-                        print(f"  Skipping — {existing} records already exist")
-                        skipped += len(added)
-                        continue
-
-                    # Pair added/removed players
-                    added_list   = sorted(added)
-                    removed_list = sorted(removed)
-
-                    # Pair them up — use None if counts differ
-                    max_len = max(len(added_list), len(removed_list))
-                    for j in range(max_len):
-                        player_in_id  = added_list[j]   if j < len(added_list)   else None
-                        player_out_id = removed_list[j]  if j < len(removed_list) else None
-
-                        if player_in_id is None or player_out_id is None:
-                            print(f"  ⚠️ Unequal transfers — in={player_in_id} out={player_out_id}, skipping")
-                            continue
-
-                        db.session.add(TransferHistory(
-                            user_id=user.id,
-                            window_match_id=curr_match_id,
-                            player_in_id=player_in_id,
-                            player_out_id=player_out_id,
-                            transferred_at=utcnow()
-                        ))
-                        inserted += 1
-                        print(f"  ✅ Logged: in={player_in_id} out={player_out_id}")
-
-            db.session.commit()
-            print(f"\n🏏 Done! Inserted: {inserted}, Skipped: {skipped}")
-
+                Match.status.in_(["upcoming", "live"])
+            ).order_by(Match.match_date).limit(5).all()
+            for m in matches:
+                match_utc = m.match_date.replace(
+                    tzinfo=IST).astimezone(timezone.utc)
+                diff = (match_utc - now).total_seconds() / 60
+                print(f"Match {m.match_number}: {m.team1} vs {m.team2}")
+                print(f"  Status: {m.status}")
+                print(f"  Date IST: {m.match_date}")
+                print(f"  {'In ' + str(int(diff)) + ' mins' if diff > 0 else 'Overdue by ' + str(int(-diff)) + ' mins'}")
             # ── END DEBUG CODE ─────────────────────────────────
 
     except Exception:
