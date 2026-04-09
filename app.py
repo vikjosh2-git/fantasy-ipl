@@ -1379,21 +1379,27 @@ def admin_debug_run():
     try:
         with redirect_stdout(output):   
             # ── PASTE DEBUG CODE HERE ──────────────────────────
-                from scheduler import scheduler_instance
-                from datetime import datetime, timezone, timedelta
+            import requests
+            from database import Match
 
-                IST = timezone(timedelta(hours=5, minutes=30))
-                now = datetime.now(timezone.utc)
+            API_KEY = "0fcdf764-1fd7-46b9-9d4c-6698264d48ee"
+            SERIES_ID = "87c62aac-bc3c-4738-ab93-19da0690488f"
 
-                print(f"Scheduler running: {scheduler_instance.running}")
-                jobs = scheduler_instance.get_jobs()
-                for job in jobs:
-                    print(f"Job: {job.id}")
-                    print(f"Next run UTC: {job.next_run_time}")
-                    if job.next_run_time:
-                        print(f"Next run IST: {job.next_run_time.astimezone(IST).strftime('%H:%M:%S')}")
-                    print(f"Now UTC: {now}")
-                    print(f"Overdue: {job.next_run_time and job.next_run_time < now}")
+            r = requests.get(
+                "https://api.cricapi.com/v1/currentMatches",
+                params={"apikey": API_KEY}
+            )
+
+            for m in r.json().get("data", []):
+                if m.get("series_id") == SERIES_ID:
+                    print(f"Match: {m['name']}")
+                    print(f"ID:    {m['id']}")
+                    print(f"Date:  {m['date']}")
+                    print(f"Status:{m['status']}")
+                    print()
+
+            print(f"Hits today: {r.json().get('info',{}).get('hitsToday','N/A')}")
+
 
 # ── END DEBUG CODE ─────────────────────────────────
 
