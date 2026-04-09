@@ -1378,32 +1378,21 @@ def admin_debug_run():
     try:
         with redirect_stdout(output):   
             # ── PASTE DEBUG CODE HERE ──────────────────────────
-            from datetime import datetime, timezone, timedelta
-            from database import Match
+                from scheduler import scheduler_instance
+                from datetime import datetime, timezone, timedelta
 
-            IST = timezone(timedelta(hours=5, minutes=30))
-            now_utc = datetime.now(timezone.utc)
-            now_ist = now_utc.astimezone(IST)
+                IST = timezone(timedelta(hours=5, minutes=30))
+                now = datetime.now(timezone.utc)
 
-            print(f"Server UTC: {now_utc.strftime('%H:%M:%S')}")
-            print(f"Server IST: {now_ist.strftime('%H:%M:%S')}")
-            print()
-
-            match = Match.query.filter_by(match_number=15).first()
-            print(f"Match 15: {match.team1} vs {match.team2}")
-            print(f"match_date in DB: {match.match_date}")
-            print(f"match_date type: {type(match.match_date)}")
-            print()
-
-            # How scheduler converts it
-            match_utc = match.match_date.replace(tzinfo=IST).astimezone(timezone.utc)
-            print(f"match_utc (after conversion): {match_utc}")
-            print(f"now_utc: {now_utc}")
-            print(f"now >= match_utc: {now_utc >= match_utc}")
-            print()
-
-            # Check if match_date already has tzinfo
-            print(f"match_date tzinfo: {match.match_date.tzinfo}")
+                print(f"Scheduler running: {scheduler_instance.running}")
+                jobs = scheduler_instance.get_jobs()
+                for job in jobs:
+                    print(f"Job: {job.id}")
+                    print(f"Next run UTC: {job.next_run_time}")
+                    if job.next_run_time:
+                        print(f"Next run IST: {job.next_run_time.astimezone(IST).strftime('%H:%M:%S')}")
+                    print(f"Now UTC: {now}")
+                    print(f"Overdue: {job.next_run_time and job.next_run_time < now}")
 
 # ── END DEBUG CODE ─────────────────────────────────
 
