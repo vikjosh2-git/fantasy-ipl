@@ -3,15 +3,27 @@
 {% block content %}
 <h1 class="page-title">👥 Select Team</h1>
 
-<!-- Team Rules -->
-<div style="font-size:11px; color:#555; margin-bottom:16px; line-height:1.8;">
-  Bat {{ rules.min_batsmen }}-{{ rules.max_batsmen }} &nbsp;·&nbsp;
-  Bowl {{ rules.min_bowlers }}-{{ rules.max_bowlers }} &nbsp;·&nbsp;
-  AR {{ rules.min_allrounders }}-{{ rules.max_allrounders }} &nbsp;·&nbsp;
-  WK {{ rules.min_keepers }}-{{ rules.max_keepers }} &nbsp;·&nbsp;
-  OS max {{ rules.max_overseas }} &nbsp;·&nbsp;
-  Per team max {{ rules.max_players_per_team }} &nbsp;·&nbsp;
-  Budget 100 cr
+<!-- Team Rules + Last Updated -->
+<div style="display:flex; justify-content:space-between; align-items:center;
+            margin-bottom:16px; flex-wrap:wrap; gap:8px;">
+  <div style="font-size:11px; color:#555; line-height:1.8;">
+    Bat {{ rules.min_batsmen }}-{{ rules.max_batsmen }} &nbsp;·&nbsp;
+    Bowl {{ rules.min_bowlers }}-{{ rules.max_bowlers }} &nbsp;·&nbsp;
+    AR {{ rules.min_allrounders }}-{{ rules.max_allrounders }} &nbsp;·&nbsp;
+    WK {{ rules.min_keepers }}-{{ rules.max_keepers }} &nbsp;·&nbsp;
+    OS max {{ rules.max_overseas }} &nbsp;·&nbsp;
+    Per team max {{ rules.max_players_per_team }} &nbsp;·&nbsp;
+    Budget 100 cr
+  </div>
+  <div style="font-size:11px; color:#888; text-align:right; flex-shrink:0;">
+    Last saved: <span id="lastSavedTimestamp" style="color:#2d6a4f; font-weight:bold;">
+      {% if existing_team and existing_team.last_updated %}
+        {{ existing_team.last_updated.strftime('%d %b %Y, %I:%M %p') }} UTC
+      {% else %}
+        Not saved yet
+      {% endif %}
+    </span>
+  </div>
 </div>
 
 <!-- Filters -->
@@ -164,6 +176,22 @@
   </div>
 </div>
 
+<!-- Tabs -->
+<div style="display:flex; gap:0; margin-bottom:0; border-bottom:2px solid #95d5b2;">
+  <button id="tabAll" onclick="switchTab('all')"
+          style="padding:8px 20px; font-size:13px; font-weight:bold;
+                 background:#2d6a4f; color:white; border:none;
+                 border-radius:8px 8px 0 0; cursor:pointer;">
+    🔍 All Players
+  </button>
+  <button id="tabMyTeam" onclick="switchTab('myteam')"
+          style="padding:8px 20px; font-size:13px; font-weight:bold;
+                 background:#f0faf4; color:#2d6a4f; border:none;
+                 border-radius:8px 8px 0 0; cursor:pointer; margin-left:4px;">
+    👥 My Team
+  </button>
+</div>
+
 <!-- Players Table -->
 <div class="card" style="margin-bottom:16px; overflow-x:auto;">
   <table style="width:100%; border-collapse:collapse; font-size:13px;">
@@ -253,10 +281,12 @@
 <!-- Transfer Summary Popup -->
 <div id="savePopup" style="display:none; position:fixed; inset:0;
      background:rgba(0,0,0,0.5); z-index:2000; align-items:center;
-     justify-content:center;">
+     justify-content:center; padding:16px; overflow-y:auto;">
   <div style="background:#fff; border-radius:12px; padding:24px;
-              max-width:420px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,0.2);
-              border-top:4px solid #2d6a4f;">
+              max-width:420px; width:100%; box-shadow:0 8px 32px rgba(0,0,0,0.2);
+              border-top:4px solid #2d6a4f; color:#1a2e1a;
+              margin:auto;">
+
     <div style="display:flex; justify-content:space-between; align-items:center;
                 margin-bottom:16px;">
       <h3 style="color:#1b4332; margin:0;">✅ Team Saved!</h3>
@@ -266,8 +296,8 @@
     </div>
 
     <!-- Timestamp -->
-    <div style="font-size:12px; color:#888; margin-bottom:16px;">
-      Last updated: <span id="popupTimestamp"></span>
+    <div style="font-size:12px; color:#555; margin-bottom:16px;">
+      Saved at: <span id="popupTimestamp" style="color:#1b4332; font-weight:bold;"></span>
     </div>
 
     <!-- Transfer summary -->
@@ -357,7 +387,12 @@
 <!-- Save Button -->
 <div style="position:fixed; bottom:0; left:0; right:0; background:#16213e;
             padding:8px 16px; text-align:center; border-top:1px solid #333;
-            z-index:999;">
+            z-index:999; display:flex; justify-content:center; gap:12px;">
+  <button class="btn" onclick="undoChanges()"
+          style="padding:8px 20px; font-size:14px; background:#333;
+                 color:#aaa; border:1px solid #555;">
+    ↩ Undo
+  </button>
   <button class="btn btn-primary" onclick="submitTeam()"
           style="padding:8px 40px; font-size:15px;">
     Save Team 🏏
@@ -384,6 +419,9 @@ const RULES = {
 
 let selected    = {{ selected_ids | tojson }};
 let originalSelected = new Set({{ selected_ids | tojson }});
+let baselineSelected = new Set({{ selected_ids | tojson }}); // window baseline
+let baselineCaptainId = {{ captain_id or 'null' }};
+let baselineVcId = {{ vc_id or 'null' }};
 let budget      = 100;
 let captainId   = {{ captain_id or 'null' }};
 let vcId        = {{ vc_id or 'null' }};
@@ -460,8 +498,10 @@ function onRoleCheck() {
   filterPlayers();
 }
 
-// ── Filter ──────────────────────────────────────────────────
+// ── Filter ────────────────────────────────────────────────
 function filterPlayers() {
+  if (currentTab === "myteam") { showMyTeam(); return; }
+
   const teamAll = document.getElementById("teamAll").checked;
   const roleAll = document.getElementById("roleAll").checked;
   const selTeams = teamAll ? [] :
@@ -503,6 +543,61 @@ function resetFilters() {
   const ngf = document.getElementById("nextGameFilter");
   if (ngf) { ngf.value = 10; document.getElementById("nextGameVal").textContent = "10"; }
   filterPlayers();
+}
+
+// ── Tabs ─────────────────────────────────────────────────────
+let currentTab = "all";
+
+function switchTab(tab) {
+  currentTab = tab;
+  const tabAll    = document.getElementById("tabAll");
+  const tabMyTeam = document.getElementById("tabMyTeam");
+  if (tab === "all") {
+    tabAll.style.background    = "#2d6a4f";
+    tabAll.style.color         = "white";
+    tabMyTeam.style.background = "#f0faf4";
+    tabMyTeam.style.color      = "#2d6a4f";
+    filterPlayers();
+  } else {
+    tabAll.style.background    = "#f0faf4";
+    tabAll.style.color         = "#2d6a4f";
+    tabMyTeam.style.background = "#2d6a4f";
+    tabMyTeam.style.color      = "white";
+    showMyTeam();
+  }
+}
+
+function showMyTeam() {
+  const selectedSet = new Set(selected);
+  document.querySelectorAll(".player-card").forEach(row => {
+    const id = parseInt(row.id.replace("card-", ""));
+    row.style.display = selectedSet.has(id) ? "" : "none";
+  });
+}
+
+// ── Undo ─────────────────────────────────────────────────────
+function undoChanges() {
+  if (!confirm("Undo all changes and revert to your saved team?")) return;
+  const toRemove = selected.filter(id => !baselineSelected.has(id));
+  const toAdd    = [...baselineSelected].filter(id => !selected.includes(id));
+  toRemove.forEach(id => {
+    const row = document.getElementById("card-" + id);
+    if (row) budget += parseFloat(row.dataset.credits || 0);
+    selected = selected.filter(x => x !== id);
+    styleRow(id);
+  });
+  toAdd.forEach(id => {
+    const row = document.getElementById("card-" + id);
+    if (row) budget -= parseFloat(row.dataset.credits || 0);
+    selected.push(id);
+    styleRow(id);
+  });
+  captainId = baselineCaptainId;
+  vcId      = baselineVcId;
+  rebuildCVCDropdowns();
+  updateBar();
+  if (currentTab === "myteam") showMyTeam();
+  showError("↩ Reverted to saved team!");
 }
 
 // ── Player info ─────────────────────────────────────────────
@@ -615,6 +710,7 @@ function togglePlayer(id, credits, name) {
   styleRow(id);
   rebuildCVCDropdowns();
   updateBar();
+  if (currentTab === "myteam") showMyTeam();
 }
 
 // ── Bar ──────────────────────────────────────────────────────
@@ -710,9 +806,9 @@ function submitTeam() {
               html += `<div style="display:flex; justify-content:space-between;
                                    padding:5px 8px; background:#f0faf4;
                                    border-radius:6px; margin-bottom:4px;
-                                   font-size:13px;">
+                                   font-size:13px; color:#1a2e1a;">
                 <span>✅ ${name}</span>
-                <span style="color:#888; font-size:11px;">${role}</span>
+                  <span style="color:#888; font-size:11px;">${role}</span>
               </div>`;
             });
             html += `</div>`;
@@ -732,7 +828,7 @@ function submitTeam() {
               html += `<div style="display:flex; justify-content:space-between;
                                    padding:5px 8px; background:#fde8e8;
                                    border-radius:6px; margin-bottom:4px;
-                                   font-size:13px;">
+                                   font-size:13px; color:#1a2e1a;">
                 <span>❌ ${name}</span>
                 <span style="color:#888; font-size:11px;">${role}</span>
               </div>`;
@@ -783,7 +879,11 @@ function submitTeam() {
         // Update transfers pill in bar
         const tl = document.getElementById("transfersLeft");
         if (tl) tl.textContent = data.transfers_remaining;
-
+      
+        // Update last saved timestamp on main screen
+        const tsEl = document.getElementById("lastSavedTimestamp");
+        if (tsEl) tsEl.textContent = ts + " (local)";
+      
       } else {
         showError(data.message);
       }
@@ -799,6 +899,41 @@ function submitTeam() {
     if (e.target === this) closePopup();
   });
 
+ function undoChanges() {
+  if (!confirm("Undo all changes and revert to your saved team?")) return;
+
+  // Restore baseline
+  const toRemove = selected.filter(id => !baselineSelected.has(id));
+  const toAdd    = [...baselineSelected].filter(id => !selected.includes(id));
+
+  // Deselect added players
+  toRemove.forEach(id => {
+    const row = document.getElementById("card-" + id);
+    if (row) budget += parseFloat(row.dataset.credits || 0);
+    selected = selected.filter(x => x !== id);
+    styleRow(id);
+  });
+
+  // Reselect removed players
+  toAdd.forEach(id => {
+    const row = document.getElementById("card-" + id);
+    if (row) budget -= parseFloat(row.dataset.credits || 0);
+    selected.push(id);
+    styleRow(id);
+  });
+
+  // Restore C/VC
+  captainId = baselineCaptainId;
+  vcId      = baselineVcId;
+
+  rebuildCVCDropdowns();
+  updateBar();
+  if (currentTab === "myteam") showMyTeam();
+
+  showError("↩ Reverted to saved team!");
+}
+
+
 // ── Init ──────────────────────────────────────────────────────
 window.onload = function() {
   selected.forEach(id => {
@@ -813,6 +948,12 @@ window.onload = function() {
     const row = document.getElementById("card-" + vcId);
     if (row) vcName = row.dataset.name || "";
   }
+
+  // Set baseline for undo functionality
+  baselineSelected  = new Set(selected);
+  baselineCaptainId = captainId;
+  baselineVcId      = vcId;
+
   selected.forEach(id => styleRow(id));
   rebuildCVCDropdowns();
   updateBar();
