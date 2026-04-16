@@ -81,6 +81,7 @@ def login():
         if user and check_password_hash(user.password, password):
             session["user_id"] = user.id
             session["username"] = user.username
+            session["is_admin"] = user.is_admin
             # Redirect to team setup if no team yet
             team = UserTeam.query.filter_by(user_id=user.id).first()
             if not team:
