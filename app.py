@@ -1128,16 +1128,20 @@ def scrape_scorecard():
     API_KEY = "0fcdf764-1fd7-46b9-9d4c-6698264d48ee"
     SERIES_ID = "87c62aac-bc3c-4738-ab93-19da0690488f"
     try:
-        r = req.get(
-            "https://api.cricapi.com/v1/currentMatches",
-            params={"apikey": API_KEY},
-            timeout=5
-        )
-        if r.status_code == 200:
+        found = False
+        for offset in [0, 25, 50]:
+            if found:
+                break
+            r = req.get(
+                "https://api.cricapi.com/v1/currentMatches",
+                params={"apikey": API_KEY, "offset": offset},
+                timeout=5
+            )
+            if r.status_code != 200:
+                break
             for m in r.json().get("data", []):
                 if m.get("series_id") != SERIES_ID:
                     continue
-                # Match by match number extracted from name
                 name = m.get("name", "")
                 match_num = None
                 for part in name.split(","):
@@ -1156,6 +1160,7 @@ def scrape_scorecard():
                               f"ID: {match.cricapi_match_id} → {m['id']}")
                         match.cricapi_match_id = m["id"]
                         db.session.commit()
+                    found = True
                     break
     except Exception as e:
         print(f"⚠️ Could not auto-correct match ID: {e}")
